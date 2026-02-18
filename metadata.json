@@ -1,0 +1,7 @@
+{
+  "name": "NEW AAU Lost & Found Portal",
+  "description": "A dedicated platform for students and staff of Ambrose Alli University to report lost items, find misplaced belongings, and communicate securely to recover their properties.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

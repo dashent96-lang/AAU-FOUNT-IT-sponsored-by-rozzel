@@ -1,0 +1,28 @@
+
+export const AAU_LOCATIONS = [
+  'Administrative Block',
+  'Ambrose Alli Hall',
+  'Clinical Science (UCH)',
+  'Cordelia Agbebaku Auditorium',
+  'E-Library',
+  'Emotan Hall',
+  'Faculty of Agriculture',
+  'Faculty of Arts',
+  'Faculty of Education',
+  'Faculty of Engineering',
+  'Faculty of Environmental Studies',
+  'Faculty of Law',
+  'Faculty of Life Sciences',
+  'Faculty of Management Sciences',
+  'Faculty of Physical Sciences',
+  'Faculty of Social Sciences',
+  'Jericho Campus',
+  'LT Halls (Lecture Theatres)',
+  'Main Library',
+  'Medical Hostel',
+  'New Boys Hostel',
+  'Professor Iyayi Hall',
+  'Rev. Martini Hall',
+  'University Gate (Main)',
+  'University Health Centre'
+];
