@@ -1,178 +1,167 @@
 
-import React, { useState, useEffect } from 'react';
+'use client';
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { Conversation, Message, User } from '../types';
-import { dataStore } from '../services/dataStore';
 
 interface MessagesViewProps {
   currentUser: User;
 }
 
 const MessagesView: React.FC<MessagesViewProps> = ({ currentUser }) => {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
+  const [items, setItems] = useState<any[]>([]);
 
-  // Fix: Make refresh async to await dataStore.getConversations
-  const refresh = async () => {
-    const convs = await dataStore.getConversations(currentUser.id);
-    setConversations(convs);
-    if (selectedConv) {
-      const updated = convs.find(c => c.itemId === selectedConv.itemId && c.otherUserId === selectedConv.otherUserId);
-      if (updated) setSelectedConv(updated);
+  const fetchMessages = async () => {
+    try {
+      const [msgRes, itemRes] = await Promise.all([
+        fetch(`/api/messages?userId=${currentUser.id}`),
+        fetch('/api/items')
+      ]);
+      const [msgData, itemData] = await Promise.all([msgRes.json(), itemRes.json()]);
+      setMessages(msgData);
+      setItems(itemData);
+    } catch (e) {
+      console.error(e);
     }
   };
 
   useEffect(() => {
-    refresh();
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 5000); // Polling for new messages
+    return () => clearInterval(interval);
   }, [currentUser.id]);
 
-  // Fix: Make handleSend async and await the sendMessage call
+  // Group messages into conversations
+  const conversations = useMemo(() => {
+    const map = new Map<string, Conversation>();
+    messages.forEach(m => {
+      const otherUserId = m.senderId === currentUser.id ? m.receiverId : m.senderId;
+      const key = `${m.itemId}_${otherUserId}`;
+      const item = items.find(i => i.id === m.itemId);
+      
+      if (!map.has(key)) {
+        map.set(key, {
+          itemId: m.itemId,
+          otherUserId,
+          otherUserName: item?.posterId === otherUserId ? item.posterName : "AAU User",
+          itemTitle: item?.title || "Unknown Item",
+          lastMessage: m.content,
+          lastTimestamp: m.timestamp,
+          messages: []
+        });
+      }
+      
+      const conv = map.get(key)!;
+      conv.messages.push(m);
+      if (m.timestamp > conv.lastTimestamp) {
+        conv.lastMessage = m.content;
+        conv.lastTimestamp = m.timestamp;
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => b.lastTimestamp - a.lastTimestamp);
+  }, [messages, items, currentUser.id]);
+
+  const activeConv = conversations.find(c => `${c.itemId}_${c.otherUserId}` === selectedConvId);
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedConv || !inputText.trim()) return;
+    if (!activeConv || !inputText.trim()) return;
 
-    await dataStore.sendMessage({
-      senderId: currentUser.id,
-      receiverId: selectedConv.otherUserId,
-      itemId: selectedConv.itemId,
-      content: inputText.trim()
-    });
-
-    setInputText('');
-    await refresh();
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderId: currentUser.id,
+          receiverId: activeConv.otherUserId,
+          itemId: activeConv.itemId,
+          content: inputText.trim()
+        }),
+      });
+      if (res.ok) {
+        setInputText('');
+        fetchMessages();
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   return (
-    <div className="bg-white rounded-2xl lg:rounded-[3rem] border border-slate-200 shadow-xl overflow-hidden flex h-[calc(100vh-12rem)] lg:h-[700px]">
-      {/* Conversations Sidebar - Hidden on mobile if a chat is selected */}
-      <div className={`${selectedConv ? 'hidden lg:flex' : 'flex'} w-full lg:w-1/3 border-r border-slate-100 flex-col bg-slate-50/50`}>
-        <div className="p-6 lg:p-8 border-b border-slate-100 bg-white">
-          <h2 className="text-xl lg:text-2xl font-black text-slate-800 tracking-tight">Chat Inbox</h2>
+    <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-xl overflow-hidden flex h-[700px]">
+      {/* Sidebar */}
+      <div className={`${selectedConvId ? 'hidden lg:flex' : 'flex'} w-full lg:w-1/3 border-r border-slate-100 flex-col bg-slate-50/30`}>
+        <div className="p-8 border-b border-slate-100">
+          <h2 className="text-2xl font-black text-slate-800">Inbox</h2>
         </div>
-        <div className="flex-grow overflow-y-auto p-2 lg:p-4 space-y-2">
-          {conversations.length > 0 ? (
-            conversations.map((conv) => (
-              <button
-                key={`${conv.itemId}_${conv.otherUserId}`}
-                onClick={() => setSelectedConv(conv)}
-                className={`w-full text-left p-4 lg:p-5 rounded-2xl lg:rounded-[2rem] transition-all flex items-center space-x-3 lg:space-x-4 ${
-                  selectedConv?.itemId === conv.itemId && selectedConv?.otherUserId === conv.otherUserId
-                    ? 'bg-blue-600 text-white shadow-xl shadow-blue-100 lg:scale-[1.02]'
-                    : 'hover:bg-white text-slate-600'
-                }`}
+        <div className="flex-grow overflow-y-auto p-4 space-y-2">
+          {conversations.map(conv => {
+            const key = `${conv.itemId}_${conv.otherUserId}`;
+            const active = selectedConvId === key;
+            return (
+              <button 
+                key={key}
+                onClick={() => setSelectedConvId(key)}
+                className={`w-full text-left p-5 rounded-[2rem] transition-all flex items-center space-x-4 ${active ? 'bg-blue-600 text-white' : 'hover:bg-white text-slate-600'}`}
               >
-                <div className={`w-10 h-10 lg:w-14 lg:h-14 rounded-xl lg:rounded-[1.25rem] flex-shrink-0 flex items-center justify-center text-xs lg:text-base font-black shadow-sm ${
-                   selectedConv?.itemId === conv.itemId && selectedConv?.otherUserId === conv.otherUserId
-                   ? 'bg-blue-500 text-white'
-                   : 'bg-white text-blue-600 border border-slate-100'
-                }`}>
+                <div className={`w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center font-black ${active ? 'bg-blue-500' : 'bg-blue-50 text-blue-600'}`}>
                   {conv.otherUserName[0]}
                 </div>
-                <div className="flex-grow min-w-0">
-                  <div className="flex justify-between items-baseline mb-0.5">
-                    <h4 className={`font-black text-xs lg:text-sm truncate ${
-                       selectedConv?.itemId === conv.itemId && selectedConv?.otherUserId === conv.otherUserId
-                       ? 'text-white'
-                       : 'text-slate-800'
-                    }`}>{conv.otherUserName}</h4>
-                    <span className={`text-[9px] lg:text-[10px] font-bold shrink-0 ml-2 ${
-                       selectedConv?.itemId === conv.itemId && selectedConv?.otherUserId === conv.otherUserId
-                       ? 'text-blue-200'
-                       : 'text-slate-400'
-                    }`}>
-                      {new Date(conv.lastTimestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                    </span>
+                <div className="min-w-0">
+                  <div className="flex justify-between items-center">
+                    <p className={`font-black text-sm truncate ${active ? 'text-white' : 'text-slate-800'}`}>{conv.otherUserName}</p>
                   </div>
-                  <p className={`text-[9px] lg:text-[10px] font-black uppercase tracking-widest truncate mb-0.5 ${
-                     selectedConv?.itemId === conv.itemId && selectedConv?.otherUserId === conv.otherUserId
-                     ? 'text-blue-100'
-                     : 'text-blue-500'
-                  }`}>{conv.itemTitle}</p>
-                  <p className="text-[11px] lg:text-xs truncate font-medium opacity-80">{conv.lastMessage}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest opacity-70 truncate">{conv.itemTitle}</p>
                 </div>
               </button>
-            ))
-          ) : (
-            <div className="p-10 text-center opacity-30 mt-10">
-              <p className="text-xs lg:text-sm font-black uppercase tracking-widest">No Active Chats</p>
-            </div>
-          )}
+            );
+          })}
         </div>
       </div>
 
-      {/* Chat Panel - Full screen on mobile if a chat is selected */}
-      <div className={`${selectedConv ? 'flex' : 'hidden lg:flex'} flex-grow flex-col bg-white`}>
-        {selectedConv ? (
+      {/* Chat Area */}
+      <div className={`${selectedConvId ? 'flex' : 'hidden lg:flex'} flex-grow flex-col`}>
+        {activeConv ? (
           <>
-            <div className="p-4 lg:p-6 border-b border-slate-50 flex items-center space-x-3 bg-white/50 shadow-sm z-10">
-              {/* Back button on mobile */}
-              <button 
-                onClick={() => setSelectedConv(null)}
-                className="lg:hidden p-2 -ml-2 text-slate-400 hover:text-blue-600"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
-              </button>
-              
-              <div className="flex items-center space-x-3 lg:space-x-4 flex-grow min-w-0">
-                <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl lg:rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 font-black shadow-inner flex-shrink-0">
-                  {selectedConv.otherUserName[0]}
-                </div>
-                <div className="min-w-0">
-                  <h3 className="font-black text-slate-800 text-sm lg:text-base tracking-tight truncate">{selectedConv.otherUserName}</h3>
-                  <div className="flex items-center truncate">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2 flex-shrink-0"></span>
-                    <span className="text-[9px] lg:text-[10px] text-slate-400 font-black uppercase tracking-widest truncate">Regarding {selectedConv.itemTitle}</span>
-                  </div>
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button onClick={() => setSelectedConvId(null)} className="lg:hidden p-2 text-slate-400"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg></button>
+                <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 font-black">{activeConv.otherUserName[0]}</div>
+                <div>
+                  <h3 className="font-black text-slate-800">{activeConv.otherUserName}</h3>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{activeConv.itemTitle}</p>
                 </div>
               </div>
             </div>
-
-            <div className="flex-grow overflow-y-auto p-4 lg:p-10 space-y-4 lg:space-y-6 bg-slate-50/20">
-              {selectedConv.messages.map((m) => (
+            <div className="flex-grow overflow-y-auto p-8 space-y-4 bg-slate-50/20">
+              {activeConv.messages.map(m => (
                 <div key={m.id} className={`flex ${m.senderId === currentUser.id ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[85%] lg:max-w-[75%] px-4 lg:px-6 py-3 lg:py-4 rounded-2xl lg:rounded-[2rem] text-xs lg:text-sm shadow-sm font-medium leading-relaxed ${
-                    m.senderId === currentUser.id 
-                    ? 'bg-blue-600 text-white rounded-tr-none shadow-blue-50' 
-                    : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none shadow-slate-50'
-                  }`}>
+                  <div className={`max-w-[70%] px-5 py-3 rounded-[1.5rem] text-sm font-medium shadow-sm ${m.senderId === currentUser.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 border border-slate-100'}`}>
                     {m.content}
-                    <div className="text-[8px] lg:text-[9px] mt-1.5 font-bold uppercase tracking-tighter opacity-60 flex justify-end">
-                      {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </div>
                   </div>
                 </div>
               ))}
             </div>
-
-            <form onSubmit={handleSend} className="p-4 lg:p-8 bg-white border-t border-slate-50">
-              <div className="flex items-center space-x-2 lg:space-x-4 bg-slate-100 rounded-2xl lg:rounded-[2.5rem] px-4 lg:px-6 py-1.5 lg:py-2 shadow-inner">
+            <form onSubmit={handleSend} className="p-6 bg-white border-t border-slate-100">
+              <div className="flex space-x-2 bg-slate-100 p-2 rounded-2xl">
                 <input 
                   type="text" 
-                  placeholder="Ask a question..."
-                  className="flex-grow bg-transparent border-none py-3 lg:py-4 focus:ring-0 outline-none text-xs lg:text-sm font-bold text-slate-700"
+                  className="flex-grow bg-transparent border-none py-3 px-4 focus:ring-0 text-sm font-bold text-slate-700"
+                  placeholder="Type a message..."
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                 />
-                <button 
-                  type="submit"
-                  className="bg-blue-600 text-white p-2.5 lg:p-4 rounded-xl lg:rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-90"
-                >
-                  <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                </button>
+                <button type="submit" className="bg-blue-600 text-white p-4 rounded-xl shadow-lg"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg></button>
               </div>
             </form>
           </>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-center p-10 opacity-40 grayscale">
-            <div className="bg-slate-50 w-20 h-20 lg:w-32 lg:h-32 rounded-[2rem] lg:rounded-[3rem] flex items-center justify-center mb-6 lg:mb-10 shadow-inner">
-              <svg className="w-10 h-10 lg:w-16 lg:h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-              </svg>
-            </div>
-            <h3 className="text-xl lg:text-3xl font-black text-slate-800 mb-2 lg:mb-4 tracking-tighter">Start Chatting</h3>
-            <p className="text-xs lg:text-base text-slate-500 max-w-xs font-medium leading-relaxed">Recovering lost items starts with a hello. Choose a chat to begin.</p>
+          <div className="h-full flex flex-col items-center justify-center text-slate-400">
+            <svg className="w-16 h-16 mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+            <p className="font-black uppercase tracking-widest text-xs">Select a conversation</p>
           </div>
         )}
       </div>

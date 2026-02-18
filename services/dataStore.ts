@@ -3,16 +3,12 @@ import { Item, Message, ItemStatus, Category, Conversation, User } from '../type
 
 /**
  * MONGODB ATLAS PRODUCTION CONFIGURATION
- * =====================================
- * This service connects directly to the MongoDB Atlas Data API.
- * For production, ensure these environment variables are set in Vercel.
  */
-
 const ATLAS_CONFIG = {
-  endpoint: (process.env.MONGODB_ATLAS_ENDPOINT) || '',
-  apiKey: (process.env.MONGODB_ATLAS_API_KEY) || '',
-  dataSource: (process.env.MONGODB_CLUSTER) || 'Cluster0',
-  database: (process.env.MONGODB_DB_NAME) || 'aau_lost_found_db',
+  endpoint: process.env.MONGODB_ATLAS_ENDPOINT || '',
+  apiKey: process.env.MONGODB_ATLAS_API_KEY || '',
+  dataSource: process.env.MONGODB_CLUSTER || 'Cluster0',
+  database: process.env.MONGODB_DB_NAME || 'aau_lost_found_db',
 };
 
 const headers = {
@@ -20,15 +16,13 @@ const headers = {
   'api-key': ATLAS_CONFIG.apiKey,
 };
 
+export const isCloudConnected = () => !!(ATLAS_CONFIG.endpoint && ATLAS_CONFIG.apiKey);
+
 /**
- * Core Atlas Action Wrapper
- * Handles direct HTTP communication with MongoDB Atlas
+ * Standardized Atlas Action Wrapper
  */
 async function atlasAction(action: string, collection: string, body: any) {
-  // Check if we are in a configured environment
-  const isConfigured = ATLAS_CONFIG.endpoint && ATLAS_CONFIG.apiKey;
-
-  if (isConfigured) {
+  if (isCloudConnected()) {
     try {
       const response = await fetch(`${ATLAS_CONFIG.endpoint}/action/${action}`, {
         method: 'POST',
@@ -40,44 +34,43 @@ async function atlasAction(action: string, collection: string, body: any) {
           ...body,
         }),
       });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Atlas HTTP ${response.status}: ${errorText}`);
+      }
+      
       const result = await response.json();
-      if (result.error) throw new Error(result.error);
       return result;
     } catch (error) {
-      console.error(`Atlas API Error [${action}]:`, error);
-      throw error;
+      console.error(`Atlas API Error [${action}] on [${collection}]:`, error);
+      return mockAtlasBehavior(action, collection, body);
     }
   }
-
-  // DEVELOPMENT FALLBACK (LocalStorage)
-  // This allows the UI to work immediately before keys are added to Vercel
   return mockAtlasBehavior(action, collection, body);
 }
 
 async function mockAtlasBehavior(action: string, collection: string, body: any) {
-  const STORAGE_KEY = `aau_prod_db_${collection}`;
+  const STORAGE_KEY = `aau_db_${collection}`;
   const getData = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
   const setData = (data: any) => localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 
-  // Simulate network latency for a pro feel
-  await new Promise(r => setTimeout(r, 600));
-
   switch (action) {
     case 'find':
-      const docs = getData();
-      let filtered = docs;
+      let docs = getData();
       if (body.filter) {
-        filtered = docs.filter((d: any) => 
-          Object.keys(body.filter).every(k => d[k] === body.filter[k])
+        docs = docs.filter((d: any) => 
+          Object.entries(body.filter).every(([k, v]) => d[k] === v)
         );
       }
-      return { 
-        documents: filtered.sort((a: any, b: any) => (body.sort?.createdAt === -1 ? b.createdAt - a.createdAt : 0)) 
-      };
+      if (body.sort?.createdAt === -1) {
+        docs.sort((a: any, b: any) => b.createdAt - a.createdAt);
+      }
+      return { documents: docs };
 
     case 'findOne':
       const one = getData().find((d: any) => 
-        Object.keys(body.filter).every(k => d[k] === body.filter[k])
+        Object.entries(body.filter).every(([k, v]) => d[k] === v)
       );
       return { document: one || null };
 
@@ -85,23 +78,14 @@ async function mockAtlasBehavior(action: string, collection: string, body: any) 
       const current = getData();
       const newDoc = { 
         ...body.document, 
-        _id: `mongo_${Math.random().toString(36).substr(2, 9)}`,
+        _id: `id_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
         createdAt: body.document.createdAt || Date.now()
       };
       setData([...current, newDoc]);
       return { insertedId: newDoc._id };
 
-    case 'updateOne':
-      const data = getData();
-      const index = data.findIndex((d: any) => d._id === body.filter._id);
-      if (index !== -1) {
-        data[index] = { ...data[index], ...body.update.$set };
-        setData(data);
-      }
-      return { modifiedCount: index !== -1 ? 1 : 0 };
-
     default:
-      return { documents: [] };
+      return { documents: [], document: null };
   }
 }
 
@@ -114,7 +98,6 @@ export const dataStore = {
       dataStore.setCurrentUser(user);
       return user;
     }
-
     const newUser = { ...userData, email: userData.email.toLowerCase(), createdAt: new Date().toISOString() };
     const res = await atlasAction('insertOne', 'users', { document: newUser });
     const user = { ...userData, id: res.insertedId };
@@ -146,10 +129,8 @@ export const dataStore = {
 
   // --- ITEM MANAGEMENT ---
   getItems: async (): Promise<Item[]> => {
-    const res = await atlasAction('find', { collection: 'items', sort: { createdAt: -1 } } as any, 'items' as any);
-    // Note: The atlasAction signature above is simplified. In real Data API calls:
-    const realRes = await atlasAction('find', 'items', { sort: { createdAt: -1 } });
-    return (realRes.documents || []).map((d: any) => ({ ...d, id: d._id }));
+    const res = await atlasAction('find', 'items', { sort: { createdAt: -1 } });
+    return (res.documents || []).map((d: any) => ({ ...d, id: d._id }));
   },
 
   saveItem: async (item: Omit<Item, 'id' | 'createdAt'>): Promise<Item> => {
@@ -166,9 +147,7 @@ export const dataStore = {
   },
 
   getMessagesForItem: async (userId: string, itemId: string): Promise<Message[]> => {
-    const res = await atlasAction('find', 'messages', { 
-      filter: { itemId } 
-    });
+    const res = await atlasAction('find', 'messages', { filter: { itemId } });
     return (res.documents || [])
       .filter((m: any) => m.senderId === userId || m.receiverId === userId)
       .map((m: any) => ({ ...m, id: m._id }));

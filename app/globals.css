@@ -1,0 +1,41 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased;
+  }
+}
+
+@keyframes blob-bounce {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+}
+
+.animate-blob {
+  animation: blob-bounce 25s infinite alternate ease-in-out;
+}
+
+.glass {
+  @apply bg-white/70 backdrop-blur-2xl border border-white/40;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-200 rounded-full border-2 border-slate-50;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-300;
+}
