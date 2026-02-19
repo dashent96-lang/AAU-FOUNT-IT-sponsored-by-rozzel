@@ -7,59 +7,53 @@
     --font-plus-jakarta: 'Plus Jakarta Sans', sans-serif;
   }
   
+  html {
+    padding-right: 0 !important;
+    overflow-y: scroll;
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior-y: contain;
+  }
+
   body {
     @apply antialiased text-slate-900 bg-slate-50 selection:bg-blue-600 selection:text-white;
     -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
   }
 }
 
 @layer components {
-  .glass {
-    @apply bg-white/70 backdrop-blur-2xl border border-white/40 shadow-sm;
+  .no-shift {
+    overflow-anchor: none;
   }
   
-  .glass-dark {
-    @apply bg-slate-900/80 backdrop-blur-2xl border border-white/10 shadow-2xl;
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
-@keyframes blob-bounce {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -50px) scale(1.1); }
-  66% { transform: translate(-20px, 20px) scale(0.9); }
+/* Aspect ratio for grid cards */
+.aspect-item-card {
+  aspect-ratio: 1 / 1;
 }
 
-.animate-blob {
-  animation: blob-bounce 25s infinite alternate ease-in-out;
+@media (max-width: 640px) {
+  /* Smaller border radius for mobile compact feel */
+  .rounded-2xl { border-radius: 0.75rem; }
+  .rounded-3xl { border-radius: 1rem; }
+  
+  /* Prevent horizontal layout shifts */
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-.animation-delay-2000 {
-  animation-delay: 2s;
-}
-
-.animation-delay-4000 {
-  animation-delay: 4s;
-}
-
-/* Scrollbar Customization */
+/* Stable Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 4px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-200 rounded-full border-2 border-slate-50;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-300;
-}
-
-/* Prevents layout shift on mobile headers */
-.sticky {
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
+  @apply bg-slate-200 rounded-full;
 }

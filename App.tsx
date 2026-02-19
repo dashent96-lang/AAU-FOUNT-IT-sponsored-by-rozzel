@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Layout from './components/Layout';
 import ItemCard from './components/ItemCard';
 import PostModal from './components/PostModal';
@@ -11,8 +11,10 @@ import { Item, ItemStatus, User } from './types';
 import { dataStore } from './services/dataStore';
 import { AAU_LOCATIONS } from './constants';
 
+type Tab = 'home' | 'messages' | 'myposts';
+
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'home' | 'messages' | 'myposts'>('home');
+  const [activeTab, setActiveTabState] = useState<Tab>('home');
   const [items, setItems] = useState<Item[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
@@ -24,6 +26,14 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ItemStatus | 'ALL'>('ALL');
   const [locationFilter, setLocationFilter] = useState<string>('ALL');
+
+  // Unified tab setter that updates browser history
+  const setActiveTab = useCallback((tab: Tab, pushHistory = true) => {
+    setActiveTabState(tab);
+    if (pushHistory) {
+      window.history.pushState({ tab }, '', `#${tab}`);
+    }
+  }, []);
 
   const refreshData = async () => {
     setIsLoading(true);
@@ -37,10 +47,28 @@ const App: React.FC = () => {
     }
   };
 
+  // Sync state with URL Hash and handle Back Button
   useEffect(() => {
-    refreshData();
+    // 1. Recover Session from persistent storage
     const user = dataStore.getCurrentUser();
     if (user) setCurrentUser(user);
+
+    // 2. Initial Tab from Hash if present
+    const hash = window.location.hash.replace('#', '') as Tab;
+    if (['home', 'messages', 'myposts'].includes(hash)) {
+      setActiveTabState(hash);
+    }
+
+    // 3. Listen for Back/Forward Buttons
+    const handlePopState = (event: PopStateEvent) => {
+      const tab = event.state?.tab || 'home';
+      setActiveTabState(tab);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    refreshData();
+
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   const handlePostReport = () => {
@@ -81,25 +109,13 @@ const App: React.FC = () => {
       onLogout={handleLogout}
       onPostReport={handlePostReport}
     >
-      <div className="space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
+      <div className="space-y-4 sm:space-y-8 animate-in fade-in duration-500">
         
         {activeTab === 'messages' ? (
           currentUser ? (
             <MessagesView currentUser={currentUser} />
           ) : (
-            <div className="bg-white rounded-[3rem] p-12 lg:p-24 text-center border border-slate-200 shadow-2xl flex flex-col items-center">
-              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 w-24 h-24 rounded-[2rem] flex items-center justify-center mb-8 shadow-2xl shadow-blue-500/20 rotate-6">
-                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863-0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-              </div>
-              <h3 className="text-3xl font-black text-slate-900 tracking-tight">Private Message Center</h3>
-              <p className="text-slate-500 mt-4 max-w-sm font-medium leading-relaxed">Secure communication is reserved for verified AAU members.</p>
-              <button 
-                onClick={() => setIsAuthModalOpen(true)}
-                className="mt-10 bg-slate-900 text-white px-10 py-5 rounded-2xl font-black shadow-2xl hover:bg-blue-600 transition-all active:scale-95"
-              >
-                Sign In to Message
-              </button>
-            </div>
+            <AuthRequiredState title="Inbox" desc="Sign in to coordinate with other AAU students." onAuth={() => setIsAuthModalOpen(true)} />
           )
         ) : activeTab === 'myposts' ? (
           currentUser ? (
@@ -111,82 +127,60 @@ const App: React.FC = () => {
               onViewDetails={setSelectedDetailItem}
             />
           ) : (
-            <div className="bg-white rounded-[3rem] p-12 lg:p-24 text-center border border-slate-200 shadow-2xl flex flex-col items-center">
-              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 w-24 h-24 rounded-[2rem] flex items-center justify-center mb-8 shadow-2xl shadow-blue-500/20 rotate-6">
-                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-              </div>
-              <h3 className="text-3xl font-black text-slate-900 tracking-tight">Your AAU Profile</h3>
-              <p className="text-slate-500 mt-4 max-w-sm font-medium leading-relaxed">Join the network to track your reports and customize your identity.</p>
-              <button 
-                onClick={() => setIsAuthModalOpen(true)}
-                className="mt-10 bg-slate-900 text-white px-10 py-5 rounded-2xl font-black shadow-2xl hover:bg-blue-600 transition-all active:scale-95"
-              >
-                Get Started
-              </button>
-            </div>
+            <AuthRequiredState title="Activity" desc="Track your lost and found reports in one place." onAuth={() => setIsAuthModalOpen(true)} />
           )
         ) : (
           <>
-            <section className="relative group rounded-[3.5rem] overflow-hidden p-8 lg:p-24 text-white shadow-[0_50px_100px_-20px_rgba(30,58,138,0.25)] border border-white/10">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-slate-900 to-indigo-900" />
-              <div className="absolute inset-0 opacity-40 mix-blend-overlay">
-                <img src="https://images.unsplash.com/photo-1541339907198-e08756ebafe3?q=80&w=2070&auto=format&fit=crop" className="w-full h-full object-cover grayscale" alt="Campus" />
+            {/* Minimal Hero Section */}
+            <section className="relative rounded-xl sm:rounded-3xl overflow-hidden p-5 sm:p-12 text-white bg-slate-900 shadow-md">
+              <div className="absolute inset-0 opacity-10">
+                 <img src="https://images.unsplash.com/photo-1523050853063-bd8012fbb761?q=80&w=1000&auto=format&fit=crop" className="w-full h-full object-cover grayscale" alt="" />
               </div>
-              <div className="relative z-10 max-w-4xl">
-                <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-blue-500/20 border border-blue-400/30 text-[10px] font-black uppercase tracking-[0.2em] text-blue-200 mb-8 backdrop-blur-xl">
-                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-ping" />
-                  <span>Ambrose Alli University Hub</span>
-                </div>
-                <h1 className="text-5xl lg:text-8xl font-black tracking-tighter leading-[0.85] mb-8">
-                  Lost it? <br/>
-                  <span className="bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">Find it here.</span>
+              <div className="relative z-10 max-w-xl">
+                <h1 className="text-xl sm:text-4xl font-black tracking-tight leading-tight mb-2 uppercase">
+                  AAU <span className="text-blue-500">Recovery</span> Hub
                 </h1>
-                <p className="text-slate-300 text-lg lg:text-2xl font-medium leading-relaxed mb-12 max-w-2xl">
-                  The official campus digital repository. Connect with fellow students to reclaim your essentials securely and swiftly.
+                <p className="text-slate-400 text-[10px] sm:text-sm font-medium mb-5 max-w-xs uppercase tracking-widest leading-relaxed">
+                  Fast, secure recovery for the Ambrose Alli community.
                 </p>
-                <button onClick={handlePostReport} className="bg-white text-slate-900 px-12 py-6 rounded-[2rem] font-black shadow-2xl transition-all hover:scale-105 active:scale-95 text-lg">Post New Report</button>
+                <button onClick={handlePostReport} className="bg-blue-600 text-white px-5 py-2 rounded-lg font-black text-[10px] sm:text-xs uppercase tracking-widest active:scale-95 shadow-lg shadow-blue-900/40">
+                  New Report
+                </button>
               </div>
             </section>
 
-            <section className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 lg:p-6 glass rounded-[2.5rem] border border-white/50 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.05)] sticky top-28 z-40">
-              <div className="relative group md:col-span-2">
+            {/* Compact Filter Bar */}
+            <section className="sticky top-16 z-40 flex flex-col sm:flex-row gap-2 bg-slate-50/80 backdrop-blur-sm py-2">
+              <div className="relative group flex-grow">
                 <input 
                   type="text" 
-                  placeholder="Search for keys, phones, wallets..."
-                  className="w-full pl-14 pr-4 py-5 rounded-2xl bg-white border-none focus:ring-4 focus:ring-blue-500/10 outline-none font-bold text-slate-700 placeholder:text-slate-400 shadow-sm transition-all"
+                  placeholder="Search items..."
+                  className="w-full pl-9 pr-3 py-2 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-blue-600/10 outline-none font-bold text-slate-700 text-[11px] placeholder:text-slate-400 transition-all"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <svg className="w-6 h-6 text-slate-300 absolute left-5 top-5 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                <svg className="w-4 h-4 text-slate-300 absolute left-3 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
               </div>
 
-              <select 
-                className="w-full px-6 py-5 rounded-2xl bg-white border-none focus:ring-4 focus:ring-blue-500/10 outline-none font-black text-slate-600 cursor-pointer shadow-sm appearance-none"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as any)}
-              >
-                <option value="ALL">All Status</option>
-                <option value={ItemStatus.LOST}>Lost</option>
-                <option value={ItemStatus.FOUND}>Found</option>
-              </select>
-
-              <select 
-                className="w-full px-6 py-5 rounded-2xl bg-white border-none focus:ring-4 focus:ring-blue-500/10 outline-none font-black text-slate-600 cursor-pointer shadow-sm appearance-none"
-                value={locationFilter}
-                onChange={(e) => setLocationFilter(e.target.value)}
-              >
-                <option value="ALL">All Locations</option>
-                {AAU_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
-              </select>
+              <div className="flex gap-2">
+                <select className="flex-1 px-3 py-2 rounded-lg bg-white border border-slate-200 font-black text-[9px] uppercase tracking-wider text-slate-600 outline-none appearance-none cursor-pointer" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)}>
+                  <option value="ALL">Status</option>
+                  <option value={ItemStatus.LOST}>Lost</option>
+                  <option value={ItemStatus.FOUND}>Found</option>
+                </select>
+                <select className="flex-1 px-3 py-2 rounded-lg bg-white border border-slate-200 font-black text-[9px] uppercase tracking-wider text-slate-600 outline-none appearance-none cursor-pointer" value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)}>
+                  <option value="ALL">Locs</option>
+                  {AAU_LOCATIONS.slice(0, 10).map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                </select>
+              </div>
             </section>
 
-            {isLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <div key={i} className="h-[500px] bg-white rounded-[3rem] animate-pulse" />)}
-              </div>
-            ) : filteredItems.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10">
-                {filteredItems.map(item => (
+            {/* Compact Card Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+              {isLoading ? (
+                [1,2,3,4,5,6].map(i => <div key={i} className="aspect-square bg-white rounded-xl animate-pulse" />)
+              ) : filteredItems.length > 0 ? (
+                filteredItems.map(item => (
                   <ItemCard 
                     key={item.id} 
                     item={item} 
@@ -196,13 +190,13 @@ const App: React.FC = () => {
                     }}
                     onViewDetails={(it) => setSelectedDetailItem(it)}
                   />
-                ))}
-              </div>
-            ) : (
-              <div className="py-24 text-center">
-                <h3 className="text-3xl font-black text-slate-300 tracking-tight">No reports found.</h3>
-              </div>
-            )}
+                ))
+              ) : (
+                <div className="col-span-full py-24 text-center">
+                  <h3 className="text-lg font-black text-slate-300 tracking-tight uppercase">No results found</h3>
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>
@@ -212,6 +206,7 @@ const App: React.FC = () => {
         onClose={() => setIsAuthModalOpen(false)} 
         onAuthSuccess={async (user) => {
           setCurrentUser(user);
+          setIsAuthModalOpen(false);
           await refreshData();
         }}
       />
@@ -245,5 +240,15 @@ const App: React.FC = () => {
     </Layout>
   );
 };
+
+const AuthRequiredState = ({ title, desc, onAuth }: { title: string, desc: string, onAuth: () => void }) => (
+  <div className="p-8 text-center bg-white rounded-xl border border-slate-100 shadow-sm max-w-sm mx-auto my-12">
+    <h3 className="text-lg font-black text-slate-900 tracking-tight mb-2 uppercase">{title}</h3>
+    <p className="text-slate-500 text-[10px] font-medium leading-relaxed mb-6">{desc}</p>
+    <button onClick={onAuth} className="w-full py-3 bg-slate-900 text-white rounded-lg font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">
+      Sign In
+    </button>
+  </div>
+);
 
 export default App;
