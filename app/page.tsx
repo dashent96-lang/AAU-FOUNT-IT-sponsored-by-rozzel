@@ -1,18 +1,17 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import Layout from '@/components/Layout';
-import ItemCard from '@/components/ItemCard';
-import PostModal from '@/components/PostModal';
-import MessageModal from '@/components/MessageModal';
-import ItemDetailsModal from '@/components/ItemDetailsModal';
-import MessagesView from '@/components/MessagesView';
-import ProfileView from '@/components/ProfileView';
-import AuthModal from '@/components/AuthModal';
-import { Item, ItemStatus, User } from '@/types';
-import { dataStore } from '@/services/dataStore';
-import { AAU_LOCATIONS } from '@/constants';
+import Layout from '../components/Layout';
+import ItemCard from '../components/ItemCard';
+import PostModal from '../components/PostModal';
+import MessageModal from '../components/MessageModal';
+import ItemDetailsModal from '../components/ItemDetailsModal';
+import MessagesView from '../components/MessagesView';
+import ProfileView from '../components/ProfileView';
+import AuthModal from '../components/AuthModal';
+import { Item, ItemStatus, User } from '../types';
+import { dataStore } from '../services/dataStore';
+import { AAU_LOCATIONS } from '../constants';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'home' | 'messages' | 'myposts'>('home');
