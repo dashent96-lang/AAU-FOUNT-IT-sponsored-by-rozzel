@@ -160,7 +160,7 @@ export default function Home() {
                 </select>
                 <select className="flex-1 px-3 py-2 rounded-lg bg-white border border-slate-200 font-black text-[9px] uppercase tracking-wider text-slate-600 outline-none appearance-none cursor-pointer" value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)}>
                   <option value="ALL">Locs</option>
-                  {AAU_LOCATIONS.slice(0, 10).map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                  {AAU_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
                 </select>
               </div>
             </section>
