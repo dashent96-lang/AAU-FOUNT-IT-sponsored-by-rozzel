@@ -1,20 +1,38 @@
+
 import React from 'react';
-import { Item, ItemStatus } from '../types';
+import { Item, ItemStatus, User } from '../types';
+import { dataStore } from '../services/dataStore';
 
 interface ItemCardProps {
   item: Item;
   onMessage: (item: Item) => void;
   onViewDetails: (item: Item) => void;
+  currentUser?: User | null;
+  onRefresh?: () => void;
 }
 
-const ItemCard: React.FC<ItemCardProps> = ({ item, onMessage, onViewDetails }) => {
+const ItemCard: React.FC<ItemCardProps> = ({ item, onMessage, onViewDetails, currentUser, onRefresh }) => {
   const isLost = item.status === ItemStatus.LOST;
+  const isResolved = item.status === ItemStatus.RECLAIMED;
+  const isOwner = currentUser?.id === item.posterId;
   const displayImage = item.imageUrl || `https://images.unsplash.com/photo-1584931423298-c576fda54bd2?q=80&w=1000&auto=format&fit=crop`;
+
+  const handleResolve = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm("Mark this post as resolved? This will disable further messaging.")) return;
+    
+    try {
+      await dataStore.updateItemStatus(item.id, ItemStatus.RECLAIMED);
+      if (onRefresh) onRefresh();
+    } catch (error) {
+      alert("Failed to resolve item.");
+    }
+  };
 
   return (
     <article 
       className={`relative bg-white rounded-xl border border-slate-100 overflow-hidden transition-all duration-300 flex flex-col h-full cursor-pointer active:scale-[0.98] ${
-        isLost ? 'hover:border-red-100' : 'hover:border-emerald-100'
+        isResolved ? 'grayscale opacity-60' : isLost ? 'hover:border-red-100' : 'hover:border-emerald-100'
       }`}
       aria-label={`${item.status} item: ${item.title}`}
       onClick={() => onViewDetails(item)}
@@ -30,12 +48,20 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, onMessage, onViewDetails }) =
         {/* Compact Status Overlay */}
         <div className="absolute top-1.5 left-1.5 z-10">
           <div className={`px-2 py-0.5 rounded-md text-[6px] sm:text-[7px] font-black uppercase tracking-widest shadow-sm flex items-center space-x-1 ${
-            isLost ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'
+            isResolved ? 'bg-slate-700 text-white' : isLost ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'
           }`}>
-            <span className={`w-0.5 h-0.5 rounded-full ${isLost ? 'bg-red-200' : 'bg-emerald-200'} animate-pulse`}></span>
+            {!isResolved && <span className={`w-0.5 h-0.5 rounded-full ${isLost ? 'bg-red-200' : 'bg-emerald-200'} animate-pulse`}></span>}
             <span>{item.status}</span>
           </div>
         </div>
+
+        {isResolved && (
+          <div className="absolute inset-0 bg-slate-900/10 flex items-center justify-center">
+            <div className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg shadow-xl">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-800">Resolved</span>
+            </div>
+          </div>
+        )}
       </div>
       
       <div className="p-2 sm:p-3.5 flex flex-col flex-grow">
@@ -62,19 +88,32 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, onMessage, onViewDetails }) =
             <span className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter truncate max-w-[40px]">{item.posterName.split(' ')[0]}</span>
           </div>
           
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onMessage(item);
-            }}
-            className={`px-2 py-1 rounded-md text-[7px] font-black transition-all uppercase tracking-widest ${
-              isLost 
-              ? 'bg-red-50 text-red-600 active:bg-red-600 active:text-white' 
-              : 'bg-emerald-50 text-emerald-600 active:bg-emerald-600 active:text-white'
-            }`}
-          >
-            Chat
-          </button>
+          <div className="flex space-x-1">
+            {isOwner && !isResolved && (
+              <button 
+                onClick={handleResolve}
+                className="px-2 py-1 rounded-md text-[7px] font-black transition-all uppercase tracking-widest bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white"
+              >
+                Resolve
+              </button>
+            )}
+            
+            {!isResolved && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMessage(item);
+                }}
+                className={`px-2 py-1 rounded-md text-[7px] font-black transition-all uppercase tracking-widest ${
+                  isLost 
+                  ? 'bg-red-50 text-red-600 active:bg-red-600 active:text-white' 
+                  : 'bg-emerald-50 text-emerald-600 active:bg-emerald-600 active:text-white'
+                }`}
+              >
+                Chat
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </article>

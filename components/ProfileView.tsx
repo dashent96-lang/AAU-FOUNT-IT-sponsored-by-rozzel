@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef } from 'react';
@@ -12,9 +13,10 @@ interface ProfileViewProps {
   myItems: Item[];
   onMessage: (item: Item) => void;
   onViewDetails: (item: Item) => void;
+  onRefresh?: () => void;
 }
 
-const ProfileView: React.FC<ProfileViewProps> = ({ currentUser, onUpdate, myItems, onMessage, onViewDetails }) => {
+const ProfileView: React.FC<ProfileViewProps> = ({ currentUser, onUpdate, myItems, onMessage, onViewDetails, onRefresh }) => {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<User>>({
@@ -279,6 +281,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ currentUser, onUpdate, myItem
               <ItemCard 
                 key={item.id} 
                 item={item} 
+                currentUser={currentUser}
+                onRefresh={onRefresh}
                 onMessage={onMessage} 
                 onViewDetails={onViewDetails} 
               />

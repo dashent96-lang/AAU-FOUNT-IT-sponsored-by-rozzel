@@ -1,4 +1,5 @@
-import { Item, Message, User } from '../types';
+
+import { Item, Message, User, ItemStatus } from '../types';
 
 /**
  * Data Service using Next.js API Routes (Server-side MongoDB)
@@ -114,6 +115,13 @@ export const dataStore = {
     return dataStore.safeFetch('/api/items', {
       method: 'POST',
       body: JSON.stringify(item),
+    });
+  },
+
+  updateItemStatus: async (itemId: string, status: ItemStatus): Promise<Item> => {
+    return dataStore.safeFetch('/api/items', {
+      method: 'PUT',
+      body: JSON.stringify({ itemId, status }),
     });
   },
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -117,6 +118,7 @@ export default function Home() {
               myItems={items.filter(i => i.posterId === currentUser.id)}
               onMessage={setSelectedMessageItem}
               onViewDetails={setSelectedDetailItem}
+              onRefresh={fetchItems}
             />
           ) : (
             <AuthRequiredState title="Activity" desc="Track your lost and found reports in one place." onAuth={() => setIsAuthModalOpen(true)} />
@@ -157,6 +159,7 @@ export default function Home() {
                   <option value="ALL">Status</option>
                   <option value={ItemStatus.LOST}>Lost</option>
                   <option value={ItemStatus.FOUND}>Found</option>
+                  <option value={ItemStatus.RECLAIMED}>Resolved</option>
                 </select>
                 <select className="flex-1 px-3 py-2 rounded-lg bg-white border border-slate-200 font-black text-[9px] uppercase tracking-wider text-slate-600 outline-none appearance-none cursor-pointer" value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)}>
                   <option value="ALL">Locs</option>
@@ -173,6 +176,8 @@ export default function Home() {
                   <ItemCard 
                     key={item.id} 
                     item={item} 
+                    currentUser={currentUser}
+                    onRefresh={fetchItems}
                     onMessage={(it) => { if (!currentUser) return setIsAuthModalOpen(true); setSelectedMessageItem(it); }} 
                     onViewDetails={(it) => setSelectedDetailItem(it)} 
                   />
@@ -190,7 +195,7 @@ export default function Home() {
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} onAuthSuccess={(user) => { setCurrentUser(user); setIsAuthModalOpen(false); fetchItems(); }} />
       {currentUser && <PostModal isOpen={isPostModalOpen} onClose={() => setIsPostModalOpen(false)} onSuccess={fetchItems} currentUser={currentUser} />}
       {currentUser && <MessageModal item={selectedMessageItem} onClose={() => setSelectedMessageItem(null)} currentUser={currentUser} />}
-      <ItemDetailsModal item={selectedDetailItem} onClose={() => setSelectedDetailItem(null)} onMessage={(item) => { if (!currentUser) return setIsAuthModalOpen(true); setSelectedDetailItem(null); setSelectedMessageItem(item); }} />
+      <ItemDetailsModal item={selectedDetailItem} onClose={() => setSelectedDetailItem(null)} currentUser={currentUser} onMessage={(item) => { if (!currentUser) return setIsAuthModalOpen(true); setSelectedDetailItem(null); setSelectedMessageItem(item); }} />
     </Layout>
   );
 }
