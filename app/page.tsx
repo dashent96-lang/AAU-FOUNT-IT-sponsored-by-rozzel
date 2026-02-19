@@ -8,8 +8,10 @@ import PostModal from '@/components/PostModal';
 import MessageModal from '@/components/MessageModal';
 import ItemDetailsModal from '@/components/ItemDetailsModal';
 import MessagesView from '@/components/MessagesView';
+import ProfileView from '@/components/ProfileView';
 import AuthModal from '@/components/AuthModal';
 import { Item, ItemStatus, User } from '@/types';
+import { dataStore } from '@/services/dataStore';
 import { AAU_LOCATIONS } from '@/constants';
 
 export default function Home() {
@@ -29,10 +31,8 @@ export default function Home() {
   const fetchItems = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/items');
-      if (!res.ok) throw new Error('Failed to fetch');
-      const data = await res.json();
-      setItems(data);
+      const fetchedItems = await dataStore.getItems();
+      setItems(fetchedItems || []);
     } catch (error) {
       console.error("Fetch error:", error);
     } finally {
@@ -42,14 +42,8 @@ export default function Home() {
 
   useEffect(() => {
     fetchItems();
-    const stored = localStorage.getItem('aau_user');
-    if (stored) {
-      try {
-        setCurrentUser(JSON.parse(stored));
-      } catch (e) {
-        localStorage.removeItem('aau_user');
-      }
-    }
+    const user = dataStore.getCurrentUser();
+    if (user) setCurrentUser(user);
   }, []);
 
   const handlePostReport = () => {
@@ -57,30 +51,29 @@ export default function Home() {
     setIsPostModalOpen(true);
   };
 
+  const myItems = useMemo(() => {
+    return items.filter(item => item.posterId === currentUser?.id);
+  }, [items, currentUser]);
+
   const filteredItems = useMemo(() => {
     return items.filter(item => {
       const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             item.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'ALL' || item.status === statusFilter;
       const matchesLocation = locationFilter === 'ALL' || item.location === locationFilter;
-      
-      if (activeTab === 'myposts') {
-        return matchesSearch && matchesStatus && matchesLocation && item.posterId === currentUser?.id;
-      }
       return matchesSearch && matchesStatus && matchesLocation;
     });
-  }, [items, searchTerm, statusFilter, locationFilter, activeTab, currentUser]);
+  }, [items, searchTerm, statusFilter, locationFilter]);
 
   const handleLogout = () => {
-    localStorage.removeItem('aau_user');
+    dataStore.logout();
     setCurrentUser(null);
     setActiveTab('home');
   };
 
   const handleAuthSuccess = (user: User) => {
     setCurrentUser(user);
-    localStorage.setItem('aau_user', JSON.stringify(user));
-    fetchItems(); // Refresh items after login to ensure user's posts are correctly attributed
+    fetchItems();
   };
 
   return (
@@ -109,30 +102,52 @@ export default function Home() {
               </button>
             </div>
           )
+        ) : activeTab === 'myposts' ? (
+          currentUser ? (
+            <ProfileView 
+              currentUser={currentUser} 
+              onUpdate={setCurrentUser} 
+              myItems={myItems}
+              onMessage={setSelectedMessageItem}
+              onViewDetails={setSelectedDetailItem}
+            />
+          ) : (
+            <div className="glass rounded-[3rem] p-12 lg:p-24 text-center border border-slate-200 shadow-2xl flex flex-col items-center">
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 w-24 h-24 rounded-[2rem] flex items-center justify-center mb-8 shadow-2xl shadow-blue-500/20 rotate-6">
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+              </div>
+              <h3 className="text-3xl font-black text-slate-900 tracking-tight">Your AAU Profile</h3>
+              <p className="text-slate-500 mt-4 max-w-sm font-medium leading-relaxed">Join the network to track your reports and customize your identity.</p>
+              <button 
+                onClick={() => setIsAuthModalOpen(true)}
+                className="mt-10 bg-slate-900 text-white px-10 py-5 rounded-2xl font-black shadow-2xl hover:bg-blue-600 transition-all active:scale-95"
+              >
+                Get Started
+              </button>
+            </div>
+          )
         ) : (
           <>
-            {activeTab === 'home' && (
-              <section className="relative group rounded-[3.5rem] overflow-hidden p-8 lg:p-24 text-white shadow-[0_50px_100px_-20px_rgba(30,58,138,0.25)] border border-white/10">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-slate-900 to-indigo-900" />
-                <div className="absolute inset-0 opacity-30 mix-blend-overlay">
-                   <img src="https://images.unsplash.com/photo-1541339907198-e08756ebafe3?q=80&w=2070&auto=format&fit=crop" className="w-full h-full object-cover grayscale" alt="Background" />
+            <section className="relative group rounded-[3.5rem] overflow-hidden p-8 lg:p-24 text-white shadow-[0_50px_100px_-20px_rgba(30,58,138,0.25)] border border-white/10">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-slate-900 to-indigo-900" />
+              <div className="absolute inset-0 opacity-30 mix-blend-overlay">
+                 <img src="https://images.unsplash.com/photo-1541339907198-e08756ebafe3?q=80&w=2070&auto=format&fit=crop" className="w-full h-full object-cover grayscale" alt="Background" />
+              </div>
+              <div className="relative z-10 max-w-4xl">
+                <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-blue-500/20 border border-blue-400/30 text-[10px] font-black uppercase tracking-[0.2em] text-blue-200 mb-8 backdrop-blur-xl">
+                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-ping" />
+                  <span>Ambrose Alli University Hub</span>
                 </div>
-                <div className="relative z-10 max-w-4xl">
-                  <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-blue-500/20 border border-blue-400/30 text-[10px] font-black uppercase tracking-[0.2em] text-blue-200 mb-8 backdrop-blur-xl">
-                    <span className="w-2 h-2 bg-blue-400 rounded-full animate-ping" />
-                    <span>Ambrose Alli University Hub</span>
-                  </div>
-                  <h1 className="text-5xl lg:text-8xl font-black tracking-tighter leading-[0.85] mb-8">
-                    Lost it? <br/>
-                    <span className="bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">Find it here.</span>
-                  </h1>
-                  <p className="text-slate-300 text-lg lg:text-2xl font-medium leading-relaxed mb-12 max-w-2xl">
-                    The official campus digital repository. Connect with fellow students to reclaim your essentials securely and swiftly.
-                  </p>
-                  <button onClick={handlePostReport} className="bg-white text-slate-900 px-12 py-5 rounded-3xl font-black text-xl hover:scale-105 transition-transform shadow-2xl">Post New Report</button>
-                </div>
-              </section>
-            )}
+                <h1 className="text-5xl lg:text-8xl font-black tracking-tighter leading-[0.85] mb-8">
+                  Lost it? <br/>
+                  <span className="bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">Find it here.</span>
+                </h1>
+                <p className="text-slate-300 text-lg lg:text-2xl font-medium leading-relaxed mb-12 max-w-2xl">
+                  The official campus digital repository. Connect with fellow students to reclaim your essentials securely and swiftly.
+                </p>
+                <button onClick={handlePostReport} className="bg-white text-slate-900 px-12 py-5 rounded-3xl font-black text-xl hover:scale-105 transition-transform shadow-2xl">Post New Report</button>
+              </div>
+            </section>
 
             <section className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 lg:p-6 glass rounded-[2.5rem] border border-white/50 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.05)] sticky top-28 z-40">
               <div className="relative group md:col-span-2">

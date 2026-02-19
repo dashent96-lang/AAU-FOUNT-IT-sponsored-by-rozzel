@@ -4,6 +4,7 @@
 import React, { useState, useRef } from 'react';
 import { ItemStatus, Category, User } from '../types';
 import { AAU_LOCATIONS } from '../constants';
+import { dataStore } from '../services/dataStore';
 
 interface PostModalProps {
   isOpen: boolean;
@@ -47,23 +48,17 @@ const PostModal: React.FC<PostModalProps> = ({ isOpen, onClose, onSuccess, curre
     
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/items', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          posterId: currentUser.id,
-          posterName: currentUser.name
-        }),
+      await dataStore.saveItem({
+        ...formData,
+        posterId: currentUser.id,
+        posterName: currentUser.name
       });
-
-      if (!res.ok) throw new Error('Post failed');
       
       onSuccess();
       onClose();
     } catch (error) {
       console.error("Save Error:", error);
-      alert("Failed to save report. Please try again.");
+      alert("Failed to save report. Check your console for details.");
     } finally {
       setIsSubmitting(false);
     }

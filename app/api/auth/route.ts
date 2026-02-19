@@ -1,43 +1,67 @@
 
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
+import clientPromise from '../../../lib/mongodb';
+
+export const dynamic = 'force-dynamic';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'aau_lost_found';
 
 export async function POST(request: Request) {
   try {
-    const { action, email, name, department } = await request.json();
+    const body = await request.json();
+    const { action, email, name } = body;
+    
+    if (!email) {
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    }
+
     const client = await clientPromise;
     const db = client.db(DB_NAME);
+    const normalizedEmail = email.toLowerCase();
 
     if (action === 'login') {
-      const user = await db.collection('users').findOne({ email: email.toLowerCase() });
+      const user = await db.collection('users').findOne({ email: normalizedEmail });
       if (!user) {
-        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        return NextResponse.json({ error: 'Account not found. Please sign up first.' }, { status: 404 });
       }
-      return NextResponse.json({ ...user, id: user._id.toString(), _id: undefined });
+      return NextResponse.json({ 
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email 
+      });
     }
 
     if (action === 'signup') {
-      const existing = await db.collection('users').findOne({ email: email.toLowerCase() });
+      if (!name) {
+        return NextResponse.json({ error: 'Full name is required for registration.' }, { status: 400 });
+      }
+
+      const existing = await db.collection('users').findOne({ email: normalizedEmail });
       if (existing) {
-        return NextResponse.json({ ...existing, id: existing._id.toString(), _id: undefined });
+        return NextResponse.json({ 
+          id: existing._id.toString(),
+          name: existing.name,
+          email: existing.email 
+        });
       }
 
       const newUser = {
         name,
-        email: email.toLowerCase(),
-        department,
+        email: normalizedEmail,
         createdAt: new Date().toISOString()
       };
 
       const result = await db.collection('users').insertOne(newUser);
-      return NextResponse.json({ ...newUser, id: result.insertedId.toString() });
+      return NextResponse.json({ 
+        id: result.insertedId.toString(),
+        name: newUser.name,
+        email: newUser.email 
+      });
     }
 
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
-  } catch (e) {
-    console.error(e);
-    return NextResponse.json({ error: 'Authentication failed' }, { status: 500 });
+    return NextResponse.json({ error: 'Invalid authentication action requested.' }, { status: 400 });
+  } catch (e: any) {
+    console.error("Auth API Error:", e);
+    return NextResponse.json({ error: `Authentication service unavailable: ${e.message}` }, { status: 500 });
   }
 }

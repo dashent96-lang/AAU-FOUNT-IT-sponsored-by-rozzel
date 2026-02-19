@@ -63,13 +63,28 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, curr
               </button>
 
               {currentUser ? (
-                <button 
-                  onClick={onLogout}
-                  className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center hover:bg-red-50 hover:text-red-600 transition-all"
-                  title="Logout"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M17 16l4-4m0 0l-4-4m4 4H7" /></svg>
-                </button>
+                <div className="flex items-center space-x-2">
+                   <div 
+                    onClick={() => setActiveTab('myposts')}
+                    className="flex items-center space-x-3 bg-slate-100/50 hover:bg-slate-100 p-1.5 pr-4 rounded-2xl transition-all cursor-pointer group"
+                   >
+                    <div className="w-9 h-9 rounded-xl bg-blue-100 overflow-hidden shadow-sm border border-white group-hover:scale-105 transition-transform">
+                      <img 
+                        src={currentUser.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${currentUser.name}`} 
+                        alt={currentUser.name} 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <span className="text-[11px] font-black text-slate-700 uppercase tracking-tight hidden md:block">{currentUser.name.split(' ')[0]}</span>
+                  </div>
+                  <button 
+                    onClick={onLogout}
+                    className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-red-50 hover:text-red-600 transition-all"
+                    title="Logout"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M17 16l4-4m0 0l-4-4m4 4H7" /></svg>
+                  </button>
+                </div>
               ) : (
                 <button 
                   onClick={onOpenAuth}

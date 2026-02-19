@@ -1,7 +1,8 @@
 
 import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
-import { ObjectId } from 'mongodb';
+import clientPromise from '../../../lib/mongodb';
+
+export const dynamic = 'force-dynamic';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || 'aau_lost_found';
 
@@ -12,7 +13,6 @@ export async function GET() {
     const items = await db.collection('items')
       .find({})
       .sort({ createdAt: -1 })
-      .limit(100)
       .toArray();
     
     const formattedItems = items.map(item => ({
@@ -23,7 +23,7 @@ export async function GET() {
 
     return NextResponse.json(formattedItems);
   } catch (e: any) {
-    console.error("DB GET Error:", e);
+    console.error("Critical API Error [GET /api/items]:", e);
     return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
   }
 }
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     const result = await db.collection('items').insertOne(newItem);
     return NextResponse.json({ ...newItem, id: result.insertedId.toString() });
   } catch (e: any) {
-    console.error("DB POST Error:", e);
+    console.error("Critical API Error [POST /api/items]:", e);
     return NextResponse.json({ error: 'Failed to create item' }, { status: 500 });
   }
 }

@@ -17,7 +17,15 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  department: string;
+  department?: string;
+  faculty?: string;
+  level?: string;
+  studentId?: string;
+  phoneNumber?: string;
+  bio?: string;
+  avatarUrl?: string;
+  preferredMeetingSpot?: string;
+  socialHandle?: string;
 }
 
 export interface Item {

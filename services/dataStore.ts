@@ -1,196 +1,150 @@
 
-import { Item, Message, ItemStatus, Category, Conversation, User } from '../types';
+import { Item, Message, User, Category, ItemStatus } from '../types';
 
 /**
- * MONGODB ATLAS PRODUCTION CONFIGURATION
+ * MongoDB Atlas Data API Configuration
  */
 const ATLAS_CONFIG = {
-  endpoint: process.env.MONGODB_ATLAS_ENDPOINT || '',
-  apiKey: process.env.MONGODB_ATLAS_API_KEY || '',
-  dataSource: process.env.MONGODB_CLUSTER || 'Cluster0',
-  database: process.env.MONGODB_DB_NAME || 'aau_lost_found_db',
+  endpoint: (typeof process !== 'undefined' && process.env.MONGODB_ATLAS_ENDPOINT) || '',
+  apiKey: (typeof process !== 'undefined' && process.env.MONGODB_ATLAS_API_KEY) || '',
+  cluster: (typeof process !== 'undefined' && process.env.MONGODB_CLUSTER) || 'Cluster0',
+  database: (typeof process !== 'undefined' && process.env.MONGODB_DB_NAME) || 'aau_lost_found',
 };
 
-const headers = {
-  'Content-Type': 'application/json',
-  'api-key': ATLAS_CONFIG.apiKey,
-};
+async function callAtlas(action: string, collection: string, filter: any = {}, document: any = null, update: any = null) {
+  if (!ATLAS_CONFIG.endpoint || !ATLAS_CONFIG.apiKey) {
+    return null;
+  }
 
-export const isCloudConnected = () => !!(ATLAS_CONFIG.endpoint && ATLAS_CONFIG.apiKey);
+  try {
+    const body: any = {
+      dataSource: ATLAS_CONFIG.cluster,
+      database: ATLAS_CONFIG.database,
+      collection: collection,
+      filter: filter,
+    };
+    if (document) body.document = document;
+    if (update) body.update = update;
 
-/**
- * Standardized Atlas Action Wrapper
- */
-async function atlasAction(action: string, collection: string, body: any) {
-  if (isCloudConnected()) {
-    try {
-      const response = await fetch(`${ATLAS_CONFIG.endpoint}/action/${action}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          dataSource: ATLAS_CONFIG.dataSource,
-          database: ATLAS_CONFIG.database,
-          collection,
-          ...body,
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Atlas HTTP ${response.status}: ${errorText}`);
-      }
-      
-      const result = await response.json();
-      return result;
-    } catch (error) {
-      console.error(`Atlas API Error [${action}] on [${collection}]:`, error);
-      return mockAtlasBehavior(action, collection, body);
+    const response = await fetch(`${ATLAS_CONFIG.endpoint}/action/${action}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': ATLAS_CONFIG.apiKey,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || `Atlas API Error: ${response.status}`);
     }
-  }
-  return mockAtlasBehavior(action, collection, body);
-}
 
-async function mockAtlasBehavior(action: string, collection: string, body: any) {
-  const STORAGE_KEY = `aau_db_${collection}`;
-  const getData = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  const setData = (data: any) => localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-
-  switch (action) {
-    case 'find':
-      let docs = getData();
-      if (body.filter) {
-        docs = docs.filter((d: any) => 
-          Object.entries(body.filter).every(([k, v]) => d[k] === v)
-        );
-      }
-      if (body.sort?.createdAt === -1) {
-        docs.sort((a: any, b: any) => b.createdAt - a.createdAt);
-      }
-      return { documents: docs };
-
-    case 'findOne':
-      const one = getData().find((d: any) => 
-        Object.entries(body.filter).every(([k, v]) => d[k] === v)
-      );
-      return { document: one || null };
-
-    case 'insertOne':
-      const current = getData();
-      const newDoc = { 
-        ...body.document, 
-        _id: `id_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-        createdAt: body.document.createdAt || Date.now()
-      };
-      setData([...current, newDoc]);
-      return { insertedId: newDoc._id };
-
-    default:
-      return { documents: [], document: null };
+    return await response.json();
+  } catch (error: any) {
+    console.error(`[ATLAS_ERROR] ${collection}:${action}:`, error.message);
+    throw error;
   }
 }
+
+const getLocal = (key: string) => JSON.parse(localStorage.getItem(`aau_${key}`) || '[]');
+const setLocal = (key: string, data: any) => localStorage.setItem(`aau_${key}`, JSON.stringify(data));
 
 export const dataStore = {
-  // --- USER AUTHENTICATION ---
   signup: async (userData: Omit<User, 'id'>): Promise<User> => {
-    const existing = await atlasAction('findOne', 'users', { filter: { email: userData.email.toLowerCase() } });
-    if (existing.document) {
-      const user = { ...existing.document, id: existing.document._id };
-      dataStore.setCurrentUser(user);
-      return user;
-    }
-    const newUser = { ...userData, email: userData.email.toLowerCase(), createdAt: new Date().toISOString() };
-    const res = await atlasAction('insertOne', 'users', { document: newUser });
-    const user = { ...userData, id: res.insertedId };
-    dataStore.setCurrentUser(user);
-    return user;
+    const newUser = { ...userData, id: Math.random().toString(36).substr(2, 9), createdAt: Date.now() };
+    const atlasRes = await callAtlas('insertOne', 'users', {}, newUser);
+    if (atlasRes) return { ...newUser, id: atlasRes.insertedId };
+    const users = getLocal('users');
+    users.push(newUser);
+    setLocal('users', users);
+    return newUser;
   },
 
   login: async (email: string): Promise<User | null> => {
-    const res = await atlasAction('findOne', 'users', { filter: { email: email.toLowerCase() } });
-    if (res.document) {
-      const user = { ...res.document, id: res.document._id };
-      dataStore.setCurrentUser(user);
-      return user;
+    const atlasRes = await callAtlas('findOne', 'users', { email: email.toLowerCase() });
+    if (atlasRes && atlasRes.document) {
+      const doc = atlasRes.document;
+      return { ...doc, id: doc._id || doc.id };
     }
-    return null;
+    const users = getLocal('users');
+    return users.find((u: any) => u.email.toLowerCase() === email.toLowerCase()) || null;
+  },
+
+  updateUser: async (userId: string, updates: Partial<User>): Promise<User> => {
+    const atlasRes = await callAtlas('updateOne', 'users', { _id: { "$oid": userId } }, null, { "$set": updates });
+    
+    // Update local session
+    const currentUser = dataStore.getCurrentUser();
+    if (currentUser && currentUser.id === userId) {
+      const updatedUser = { ...currentUser, ...updates };
+      dataStore.setCurrentUser(updatedUser);
+      
+      // Fallback for list of users
+      const users = getLocal('users');
+      const index = users.findIndex((u: any) => (u._id || u.id) === userId);
+      if (index !== -1) {
+        users[index] = { ...users[index], ...updates };
+        setLocal('users', users);
+      }
+      return updatedUser;
+    }
+    throw new Error("User not found in local session");
   },
 
   getCurrentUser: (): User | null => {
-    const data = localStorage.getItem('aau_session_v2');
+    if (typeof window === 'undefined') return null;
+    const data = localStorage.getItem('aau_current_user');
     return data ? JSON.parse(data) : null;
   },
 
   setCurrentUser: (user: User | null) => {
-    if (user) localStorage.setItem('aau_session_v2', JSON.stringify(user));
-    else localStorage.removeItem('aau_session_v2');
+    if (typeof window === 'undefined') return;
+    if (user) localStorage.setItem('aau_current_user', JSON.stringify(user));
+    else localStorage.removeItem('aau_current_user');
   },
 
   logout: () => dataStore.setCurrentUser(null),
 
-  // --- ITEM MANAGEMENT ---
   getItems: async (): Promise<Item[]> => {
-    const res = await atlasAction('find', 'items', { sort: { createdAt: -1 } });
-    return (res.documents || []).map((d: any) => ({ ...d, id: d._id }));
+    const atlasRes = await callAtlas('find', 'items', {});
+    if (atlasRes && atlasRes.documents) {
+      return atlasRes.documents.map((d: any) => ({ ...d, id: d._id || d.id }));
+    }
+    return getLocal('items');
   },
 
   saveItem: async (item: Omit<Item, 'id' | 'createdAt'>): Promise<Item> => {
-    const newItem = { ...item, createdAt: Date.now() };
-    const res = await atlasAction('insertOne', 'items', { document: newItem });
-    return { ...newItem, id: res.insertedId };
+    const newItem = { ...item, id: Math.random().toString(36).substr(2, 9), createdAt: Date.now() };
+    const atlasRes = await callAtlas('insertOne', 'items', {}, newItem);
+    if (atlasRes) return { ...newItem, id: atlasRes.insertedId };
+    const items = getLocal('items');
+    items.unshift(newItem);
+    setLocal('items', items);
+    return newItem;
   },
 
-  // --- MESSAGING SYSTEM ---
   sendMessage: async (message: Omit<Message, 'id' | 'timestamp'>): Promise<Message> => {
-    const newMessage = { ...message, timestamp: Date.now() };
-    const res = await atlasAction('insertOne', 'messages', { document: newMessage });
-    return { ...newMessage, id: res.insertedId };
+    const newMsg = { ...message, id: Math.random().toString(36).substr(2, 9), timestamp: Date.now() };
+    const atlasRes = await callAtlas('insertOne', 'messages', {}, newMsg);
+    if (atlasRes) return { ...newMsg, id: atlasRes.insertedId };
+    const messages = getLocal('messages');
+    messages.push(newMsg);
+    setLocal('messages', messages);
+    return newMsg;
+  },
+
+  getMessages: async (userId: string): Promise<Message[]> => {
+    const atlasRes = await callAtlas('find', 'messages', {
+      $or: [{ senderId: userId }, { receiverId: userId }]
+    });
+    if (atlasRes && atlasRes.documents) return atlasRes.documents.map((d: any) => ({ ...d, id: d._id || d.id }));
+    const messages = getLocal('messages');
+    return messages.filter((m: any) => m.senderId === userId || m.receiverId === userId);
   },
 
   getMessagesForItem: async (userId: string, itemId: string): Promise<Message[]> => {
-    const res = await atlasAction('find', 'messages', { filter: { itemId } });
-    return (res.documents || [])
-      .filter((m: any) => m.senderId === userId || m.receiverId === userId)
-      .map((m: any) => ({ ...m, id: m._id }));
-  },
-
-  getConversations: async (userId: string): Promise<Conversation[]> => {
-    const [itemsRes, messagesRes] = await Promise.all([
-      atlasAction('find', 'items', {}),
-      atlasAction('find', 'messages', {})
-    ]);
-
-    const allItems = itemsRes.documents || [];
-    const userMessages = (messagesRes.documents || []).filter((m: any) => 
-      m.senderId === userId || m.receiverId === userId
-    );
-
-    const convMap = new Map<string, Conversation>();
-
-    userMessages.forEach((msg: any) => {
-      const otherUserId = msg.senderId === userId ? msg.receiverId : msg.senderId;
-      const key = `${msg.itemId}_${otherUserId}`;
-      const item = allItems.find((i: any) => i._id === msg.itemId);
-      
-      if (!convMap.has(key)) {
-        convMap.set(key, {
-          itemId: msg.itemId,
-          otherUserId,
-          otherUserName: item?.posterId === otherUserId ? item.posterName : "AAU User",
-          itemTitle: item?.title || "Deleted Item",
-          lastMessage: msg.content,
-          lastTimestamp: msg.timestamp,
-          messages: []
-        });
-      }
-
-      const conv = convMap.get(key)!;
-      conv.messages.push({ ...msg, id: msg._id });
-      if (msg.timestamp > conv.lastTimestamp) {
-        conv.lastMessage = msg.content;
-        conv.lastTimestamp = msg.timestamp;
-      }
-    });
-
-    return Array.from(convMap.values()).sort((a, b) => b.lastTimestamp - a.lastTimestamp);
+    const msgs = await dataStore.getMessages(userId);
+    return msgs.filter((m) => m.itemId === itemId);
   }
 };
