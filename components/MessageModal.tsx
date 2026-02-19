@@ -54,7 +54,7 @@ const MessageModal: React.FC<MessageModalProps> = ({ item, onClose, currentUser 
     <div className="fixed inset-0 z-[400] flex items-center justify-center bg-slate-900/60 backdrop-blur-md sm:p-4">
       <div className="bg-white w-full h-full sm:h-[750px] sm:max-w-lg sm:rounded-[3rem] shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-10 duration-500">
         {/* Immersive Header */}
-        <div className="px-6 py-4 sm:px-8 sm:py-6 border-b border-slate-100 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
+        <div className="px-6 py-4 sm:px-8 sm:py-6 border-b border-slate-100 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
           <div className="flex items-center space-x-3">
             <button 
               onClick={onClose} 
@@ -91,7 +91,7 @@ const MessageModal: React.FC<MessageModalProps> = ({ item, onClose, currentUser 
             <div className="h-full flex flex-col items-center justify-center text-center px-10">
               <div className="bg-blue-50 p-6 rounded-[2rem] mb-4 text-blue-500">
                 <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863-0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </div>
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Private Session</p>
@@ -117,22 +117,22 @@ const MessageModal: React.FC<MessageModalProps> = ({ item, onClose, currentUser 
           )}
         </div>
 
-        {/* Messaging Bar */}
-        <form onSubmit={handleSend} className="p-4 sm:p-6 bg-white border-t border-slate-100 pb-safe">
-          <div className="flex items-center space-x-2 bg-slate-100 p-1 rounded-2xl">
+        {/* Messaging Bar - Raised with extra padding and elevation */}
+        <form onSubmit={handleSend} className="p-6 sm:p-10 bg-white border-t border-slate-50 pb-safe shrink-0">
+          <div className="flex items-center space-x-2 bg-slate-50 p-1.5 rounded-[1.5rem] border border-slate-200/60 shadow-inner group focus-within:ring-4 focus-within:ring-blue-600/5 transition-all">
             <input 
               type="text" 
               placeholder="Type your message..."
-              className="flex-grow px-4 py-3 bg-transparent border-none focus:ring-0 outline-none text-sm font-bold text-slate-800"
+              className="flex-grow px-5 py-4 bg-transparent border-none focus:ring-0 outline-none text-sm font-bold text-slate-800 placeholder:text-slate-400"
               value={content}
               onChange={(e) => setContent(e.target.value)}
             />
             <button 
               type="submit"
               disabled={!content.trim()}
-              className={`p-3 rounded-xl transition-all active:scale-90 ${
+              className={`p-4 rounded-2xl transition-all active:scale-90 shadow-lg ${
                 content.trim() 
-                ? 'bg-blue-600 text-white shadow-lg' 
+                ? 'bg-blue-600 text-white shadow-blue-500/20' 
                 : 'bg-slate-200 text-slate-400'
               }`}
             >
@@ -140,6 +140,11 @@ const MessageModal: React.FC<MessageModalProps> = ({ item, onClose, currentUser 
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             </button>
+          </div>
+          <div className="mt-4 flex justify-center">
+            <span className="text-[7px] font-black text-slate-300 uppercase tracking-widest">
+              Secured Peer-to-Peer Recovery
+            </span>
           </div>
         </form>
       </div>
