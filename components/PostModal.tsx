@@ -58,11 +58,13 @@ const PostModal: React.FC<PostModalProps> = ({ isOpen, onClose, onSuccess, curre
       onClose();
     } catch (error) {
       console.error("Save Error:", error);
-      alert("Failed to save report. Check your console for details.");
+      alert("Failed to save report.");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const inputStyles = "w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none font-bold text-slate-900 placeholder:text-slate-400 transition-all";
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 overflow-y-auto">
@@ -70,7 +72,7 @@ const PostModal: React.FC<PostModalProps> = ({ isOpen, onClose, onSuccess, curre
         <div className="px-10 py-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
           <div>
             <h2 className="text-3xl font-black text-slate-800 tracking-tight">Report Item</h2>
-            <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">Global Recovery Network</p>
+            <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">AAU Recovery Hub</p>
           </div>
           <button onClick={onClose} className="p-3 hover:bg-white hover:shadow-md rounded-2xl transition-all text-slate-400">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -117,7 +119,7 @@ const PostModal: React.FC<PostModalProps> = ({ isOpen, onClose, onSuccess, curre
               ) : (
                 <div className="text-center p-6">
                   <svg className="w-12 h-12 text-slate-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                  <p className="text-sm font-bold text-slate-500">Click to upload item photo</p>
+                  <p className="text-sm font-bold text-slate-500">Click to upload photo</p>
                 </div>
               )}
               <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
@@ -126,11 +128,22 @@ const PostModal: React.FC<PostModalProps> = ({ isOpen, onClose, onSuccess, curre
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Item Title</label>
-                <input required type="text" placeholder="e.g. Blue Backpack" className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500 outline-none font-bold" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} />
+                <input 
+                  required 
+                  type="text" 
+                  placeholder="e.g. Blue Backpack" 
+                  className={inputStyles}
+                  value={formData.title} 
+                  onChange={(e) => setFormData({...formData, title: e.target.value})} 
+                />
               </div>
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Location</label>
-                <select className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-600 cursor-pointer" value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})}>
+                <select 
+                  className={inputStyles + " cursor-pointer"}
+                  value={formData.location} 
+                  onChange={(e) => setFormData({...formData, location: e.target.value})}
+                >
                   {AAU_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
                 </select>
               </div>
@@ -138,12 +151,19 @@ const PostModal: React.FC<PostModalProps> = ({ isOpen, onClose, onSuccess, curre
 
             <div>
               <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Full Description</label>
-              <textarea required rows={4} placeholder="Describe the item in detail..." className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-blue-500 outline-none resize-none font-bold" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} />
+              <textarea 
+                required 
+                rows={4} 
+                placeholder="Describe the item in detail..." 
+                className={inputStyles + " resize-none"}
+                value={formData.description} 
+                onChange={(e) => setFormData({...formData, description: e.target.value})} 
+              />
             </div>
           </div>
 
           <button type="submit" disabled={isSubmitting} className={`w-full py-6 bg-blue-600 hover:bg-blue-700 text-white rounded-3xl font-black shadow-2xl transition-all ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:-translate-y-1'}`}>
-            {isSubmitting ? 'Publishing Report...' : 'Publish Report'}
+            {isSubmitting ? 'Publishing...' : 'Publish Report'}
           </button>
         </form>
       </div>

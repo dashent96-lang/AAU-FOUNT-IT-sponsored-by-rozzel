@@ -1,10 +1,2 @@
-
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    port: 3000,
-  },
-});
+// This file is disabled to allow Next.js build to proceed without Vite dependencies.
+export default {};
