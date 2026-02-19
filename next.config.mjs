@@ -2,7 +2,13 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  // Standard build output for Vercel
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: 'api.dicebear.com' },
+    ],
+  },
+  // Ensure the build output is strictly mapping to what Vercel expects
   distDir: '.next',
 };
 

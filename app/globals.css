@@ -1,11 +1,25 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --font-plus-jakarta: 'Plus Jakarta Sans', sans-serif;
+  }
+  
   body {
-    @apply antialiased;
+    @apply antialiased text-slate-900 bg-slate-50 selection:bg-blue-600 selection:text-white;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/70 backdrop-blur-2xl border border-white/40 shadow-sm;
+  }
+  
+  .glass-dark {
+    @apply bg-slate-900/80 backdrop-blur-2xl border border-white/10 shadow-2xl;
   }
 }
 
@@ -19,11 +33,15 @@
   animation: blob-bounce 25s infinite alternate ease-in-out;
 }
 
-.glass {
-  @apply bg-white/70 backdrop-blur-2xl border border-white/40;
+.animation-delay-2000 {
+  animation-delay: 2s;
 }
 
-/* Custom Scrollbar */
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* Scrollbar Customization */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -38,4 +56,10 @@
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-slate-300;
+}
+
+/* Prevents layout shift on mobile headers */
+.sticky {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
