@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Item, ItemStatus, User } from '../types';
 import { dataStore } from '../services/dataStore';
@@ -104,13 +103,9 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, onMessage, onViewDetails, cur
                   e.stopPropagation();
                   onMessage(item);
                 }}
-                className={`px-2 py-1 rounded-md text-[7px] font-black transition-all uppercase tracking-widest ${
-                  isLost 
-                  ? 'bg-red-50 text-red-600 active:bg-red-600 active:text-white' 
-                  : 'bg-emerald-50 text-emerald-600 active:bg-emerald-600 active:text-white'
-                }`}
+                className={`px-2 py-1 rounded-md text-[7px] font-black transition-all uppercase tracking-widest bg-slate-900 text-white hover:bg-blue-600`}
               >
-                Chat
+                Admin Support
               </button>
             )}
           </div>

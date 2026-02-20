@@ -5,11 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>AAU Recovery Hub | Official Lost & Found</title>
     
-    <!-- SEO & Social Meta -->
-    <meta name="description" content="The official Ambrose Alli University Lost and Found portal. Securely report and recover missing items within the university community.">
+    <!-- SEO & Meta -->
+    <meta name="description" content="Official Ambrose Alli University Lost and Found portal. Securely report and recover missing items.">
     <meta name="theme-color" content="#1d4ed8">
     
-    <!-- Styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -17,57 +16,39 @@
           --app-blue: #1d4ed8;
           --app-slate-900: #0f172a;
         }
-
         body { 
           font-family: 'Plus Jakarta Sans', sans-serif;
           -webkit-font-smoothing: antialiased;
           background: #f8fafc;
           overflow-x: hidden;
         }
-        
-        /* Floating Blobs Animation */
         @keyframes blob-bounce {
           0%, 100% { transform: translate(0, 0) scale(1); }
           33% { transform: translate(30px, -50px) scale(1.1); }
           66% { transform: translate(-20px, 20px) scale(0.9); }
         }
-        .animate-blob {
-          animation: blob-bounce 25s infinite alternate ease-in-out;
-        }
+        .animate-blob { animation: blob-bounce 25s infinite alternate ease-in-out; }
         .animation-delay-2000 { animation-delay: 2s; }
         .animation-delay-4000 { animation-delay: 4s; }
-
-        /* Custom scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 20px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
         .glass {
           background: rgba(255, 255, 255, 0.7);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
           border: 1px solid rgba(255, 255, 255, 0.3);
         }
-
-        /* Prevent overscroll bounce on mobile to keep fixed UI stable */
-        html, body {
-          overscroll-behavior-y: none;
-        }
-
-        .pb-safe {
-          padding-bottom: env(safe-area-inset-bottom);
-        }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
     </style>
-<script type="importmap">
+    <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@19.0.0",
     "react-dom": "https://esm.sh/react-dom@19.0.0",
     "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
-    "react-dom/": "https://esm.sh/react-dom@19.0.0/",
-    "react/": "https://esm.sh/react@19.0.0/",
-    "lucide-react": "https://esm.sh/lucide-react@0.400.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
     "mongodb": "https://esm.sh/mongodb@^7.1.0",
     "next/": "https://esm.sh/next@^16.1.6/",
     "next": "https://esm.sh/next@^16.1.6",
@@ -77,12 +58,10 @@
 </script>
 </head>
 <body class="text-slate-900 selection:bg-blue-600 selection:text-white">
-    <!-- Ambient Background -->
     <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
       <div class="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-blue-600/5 blur-[120px] rounded-full animate-blob"></div>
       <div class="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-indigo-600/5 blur-[120px] rounded-full animate-blob animation-delay-2000"></div>
     </div>
-    
     <div id="root" class="relative z-10"></div>
     <script type="module" src="/index.tsx"></script>
 </body>

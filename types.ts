@@ -1,4 +1,3 @@
-
 export enum ItemStatus {
   LOST = 'LOST',
   FOUND = 'FOUND',
@@ -40,6 +39,7 @@ export interface Item {
   posterId: string;
   posterName: string;
   createdAt: number;
+  isVerified: boolean;
 }
 
 export interface Message {
@@ -48,6 +48,7 @@ export interface Message {
   receiverId: string;
   itemId: string;
   content: string;
+  imageUrl?: string;
   timestamp: number;
 }
 

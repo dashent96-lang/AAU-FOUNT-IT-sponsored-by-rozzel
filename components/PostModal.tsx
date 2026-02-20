@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef } from 'react';
@@ -54,6 +53,7 @@ const PostModal: React.FC<PostModalProps> = ({ isOpen, onClose, onSuccess, curre
         posterName: currentUser.name
       });
       
+      alert("Report submitted! It is now pending admin verification.");
       onSuccess();
       onClose();
     } catch (error) {
@@ -80,6 +80,10 @@ const PostModal: React.FC<PostModalProps> = ({ isOpen, onClose, onSuccess, curre
         </div>
 
         <form onSubmit={handleSubmit} className="p-10 space-y-8 max-h-[75vh] overflow-y-auto">
+          <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 mb-4">
+             <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest leading-relaxed">Note: All posts require verification by the AAU Hub administrators before appearing in the public feed.</p>
+          </div>
+
           <div className="grid grid-cols-2 gap-6">
              <button
               type="button"

@@ -3,8 +3,8 @@ import { User } from '../types';
 
 interface LayoutProps {
   children: React.ReactNode;
-  activeTab: 'home' | 'messages' | 'myposts';
-  setActiveTab: (tab: 'home' | 'messages' | 'myposts') => void;
+  activeTab: 'home' | 'messages' | 'myposts' | 'admin' | 'guide';
+  setActiveTab: (tab: 'home' | 'messages' | 'myposts' | 'admin' | 'guide') => void;
   currentUser: User | null;
   onOpenAuth: () => void;
   onLogout: () => void;
@@ -12,6 +12,8 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, currentUser, onOpenAuth, onLogout, onPostReport }) => {
+  const isAdmin = currentUser?.email === 'admin@gmail.com';
+
   const NavButton = ({ tab, label, icon }: { tab: typeof activeTab, label: string, icon: React.ReactNode }) => (
     <button 
       onClick={() => setActiveTab(tab)}
@@ -49,8 +51,12 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, curr
 
             <nav className="hidden lg:flex items-center space-x-1">
               <NavButton tab="home" label="Home" icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>} />
+              <NavButton tab="guide" label="Guide" icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
               <NavButton tab="messages" label="Inbox" icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863-0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>} />
               <NavButton tab="myposts" label="Profile" icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>} />
+              {isAdmin && (
+                <NavButton tab="admin" label="Admin" icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>} />
+              )}
             </nav>
 
             <div className="flex items-center space-x-2">
@@ -74,7 +80,6 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, curr
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  {/* Sign out button strictly beside user details */}
                   <button 
                     onClick={onLogout}
                     className="p-2 sm:p-2.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition-all active:scale-90"
@@ -112,6 +117,12 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, curr
           icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>}
         />
         <MobileNavItem 
+          active={activeTab === 'guide'} 
+          onClick={() => setActiveTab('guide')} 
+          label="Guide"
+          icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+        />
+        <MobileNavItem 
           active={activeTab === 'messages'} 
           onClick={() => setActiveTab('messages')} 
           label="Inbox"
@@ -123,6 +134,14 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, curr
           label="Activity"
           icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
         />
+        {isAdmin && (
+          <MobileNavItem 
+            active={activeTab === 'admin'} 
+            onClick={() => setActiveTab('admin')} 
+            label="Admin"
+            icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>}
+          />
+        )}
       </nav>
     </div>
   );
