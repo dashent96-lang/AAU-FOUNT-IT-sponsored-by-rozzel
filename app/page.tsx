@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -40,7 +39,7 @@ export default function Home() {
   const fetchItems = async () => {
     try {
       const fetchedItems = await dataStore.getItems();
-      setItems(fetchedItems || []);
+      setItems(Array.isArray(fetchedItems) ? fetchedItems : []);
     } catch (error) {
       console.error("Fetch error:", error);
     } finally {
@@ -80,8 +79,12 @@ export default function Home() {
   const filteredItems = useMemo(() => {
     const safeItems = Array.isArray(items) ? items : [];
     return safeItems.filter(item => {
-      const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            item.description.toLowerCase().includes(searchTerm.toLowerCase());
+      if (!item) return false;
+      const title = (item.title || '').toLowerCase();
+      const desc = (item.description || '').toLowerCase();
+      const search = searchTerm.toLowerCase();
+      
+      const matchesSearch = title.includes(search) || desc.includes(search);
       const matchesStatus = statusFilter === 'ALL' || item.status === statusFilter;
       const matchesLocation = locationFilter === 'ALL' || item.location === locationFilter;
       return matchesSearch && matchesStatus && matchesLocation;
@@ -103,7 +106,7 @@ export default function Home() {
       onLogout={handleLogout}
       onPostReport={handlePostReport}
     >
-      <div className="space-y-4 sm:space-y-8 animate-in fade-in duration-500">
+      <div className="space-y-6 sm:space-y-12 animate-in fade-in duration-500">
         {activeTab === 'messages' ? (
           currentUser ? (
             <MessagesView currentUser={currentUser} />
@@ -121,56 +124,76 @@ export default function Home() {
               onRefresh={fetchItems}
             />
           ) : (
-            <AuthRequiredState title="Activity" desc="Track your lost and found reports in one place." onAuth={() => setIsAuthModalOpen(true)} />
+            <AuthRequiredState title="Profile" desc="Track your lost and found activity in one place." onAuth={() => setIsAuthModalOpen(true)} />
           )
         ) : (
           <>
-            <section className="relative rounded-xl sm:rounded-3xl overflow-hidden p-5 sm:p-12 text-white bg-slate-900 shadow-md">
-              <div className="absolute inset-0 opacity-10">
-                 <img src="https://images.unsplash.com/photo-1523050853063-bd8012fbb761?q=80&w=1000&auto=format&fit=crop" className="w-full h-full object-cover grayscale" alt="" />
+            <section className="relative rounded-[2.5rem] sm:rounded-[4rem] overflow-hidden p-8 sm:p-20 text-white bg-slate-900 shadow-2xl">
+              <div className="absolute inset-0 opacity-20">
+                 <img src="https://images.unsplash.com/photo-1523050853063-bd8012fbb761?q=80&w=1000&auto=format&fit=crop" className="w-full h-full object-cover grayscale brightness-50" alt="" />
               </div>
-              <div className="relative z-10 max-w-xl">
-                <h1 className="text-xl sm:text-4xl font-black tracking-tight leading-tight mb-2 uppercase">
-                  AAU <span className="text-blue-500">Recovery</span> Network
+              <div className="relative z-10 max-w-2xl">
+                <h1 className="text-3xl sm:text-6xl font-black tracking-tighter leading-none mb-4 uppercase">
+                  AAU <span className="text-blue-500">Recovery</span> Hub
                 </h1>
-                <p className="text-slate-400 text-[10px] sm:text-sm font-medium mb-5 max-w-xs uppercase tracking-widest leading-relaxed">
+                <p className="text-slate-300 text-xs sm:text-lg font-medium mb-8 max-w-sm uppercase tracking-widest leading-relaxed">
                   Fast, secure recovery for the Ambrose Alli community.
                 </p>
-                <button onClick={handlePostReport} className="bg-blue-600 text-white px-5 py-2 rounded-lg font-black text-[10px] sm:text-xs uppercase tracking-widest active:scale-95 shadow-lg shadow-blue-900/40">
-                  New Report
+                <button onClick={handlePostReport} className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-widest active:scale-95 shadow-2xl shadow-blue-500/30 hover:bg-blue-700 transition-all">
+                  Post Report
                 </button>
               </div>
             </section>
 
-            <section className="sticky top-16 z-40 flex flex-col sm:flex-row gap-2 bg-slate-50/80 backdrop-blur-sm py-2">
-              <div className="relative group flex-grow">
-                <input 
-                  type="text" 
-                  placeholder="Search items..."
-                  className="w-full pl-9 pr-3 py-2 rounded-lg bg-white border border-slate-200 focus:ring-2 focus:ring-blue-600/10 outline-none font-bold text-slate-700 text-[11px] placeholder:text-slate-400 transition-all"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <svg className="w-4 h-4 text-slate-300 absolute left-3 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-              </div>
+            {/* Sticky Filters - Highly Responsive */}
+            <section className="sticky top-16 sm:top-20 z-40 bg-slate-50/80 backdrop-blur-md py-4 sm:py-6 -mx-2 px-2">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative group flex-grow">
+                  <input 
+                    type="text" 
+                    placeholder="Search the hub..."
+                    className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-slate-200 focus:ring-4 focus:ring-blue-600/5 outline-none font-bold text-slate-700 text-xs shadow-sm transition-all"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <svg className="w-5 h-5 text-slate-300 absolute left-4 top-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                </div>
 
-              <div className="flex gap-2">
-                <select className="flex-1 px-3 py-2 rounded-lg bg-white border border-slate-200 font-black text-[9px] uppercase tracking-wider text-slate-600 outline-none appearance-none cursor-pointer" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)}>
-                  <option value="ALL">Status</option>
-                  <option value={ItemStatus.LOST}>Lost</option>
-                  <option value={ItemStatus.FOUND}>Found</option>
-                  <option value={ItemStatus.RECLAIMED}>Resolved</option>
-                </select>
-                <select className="flex-1 px-3 py-2 rounded-lg bg-white border border-slate-200 font-black text-[9px] uppercase tracking-wider text-slate-600 outline-none appearance-none cursor-pointer" value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)}>
-                  <option value="ALL">Locs</option>
-                  {AAU_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
-                </select>
+                <div className="flex gap-2">
+                  <div className="relative flex-1 sm:w-40 shrink-0">
+                    <select 
+                      className="w-full pl-4 pr-10 py-4 rounded-2xl bg-white border border-slate-200 font-black text-[9px] uppercase tracking-widest text-slate-600 outline-none appearance-none cursor-pointer shadow-sm focus:ring-4 focus:ring-blue-600/5 transition-all" 
+                      value={statusFilter} 
+                      onChange={(e) => setStatusFilter(e.target.value as any)}
+                    >
+                      <option value="ALL">All Status</option>
+                      <option value={ItemStatus.LOST}>Lost Items</option>
+                      <option value={ItemStatus.FOUND}>Found Items</option>
+                    </select>
+                    <div className="absolute right-4 top-5 pointer-events-none text-slate-400">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+                  </div>
+                  <div className="relative flex-1 sm:w-48 shrink-0">
+                    <select 
+                      className="w-full pl-4 pr-10 py-4 rounded-2xl bg-white border border-slate-200 font-black text-[9px] uppercase tracking-widest text-slate-600 outline-none appearance-none cursor-pointer shadow-sm focus:ring-4 focus:ring-blue-600/5 transition-all" 
+                      value={locationFilter} 
+                      onChange={(e) => setLocationFilter(e.target.value)}
+                    >
+                      <option value="ALL">All Locations</option>
+                      {AAU_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                    </select>
+                    <div className="absolute right-4 top-5 pointer-events-none text-slate-400">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+                  </div>
+                </div>
               </div>
             </section>
 
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-10">
               {isLoading ? (
-                [1,2,3,4,5,6].map(i => <div key={i} className="aspect-square bg-white rounded-xl animate-pulse" />)
+                [1,2,3,4,5,6,7,8].map(i => <div key={i} className="aspect-[4/5] bg-white rounded-[2rem] animate-pulse" />)
               ) : filteredItems.length > 0 ? (
                 filteredItems.map(item => (
                   <ItemCard 
@@ -183,8 +206,9 @@ export default function Home() {
                   />
                 ))
               ) : (
-                <div className="col-span-full py-24 text-center">
-                   <h3 className="text-lg font-black text-slate-300 tracking-tight uppercase">No results found</h3>
+                <div className="col-span-full py-32 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-100 mx-1">
+                   <h3 className="text-xl sm:text-3xl font-black text-slate-200 tracking-tighter uppercase mb-2">No Verified Items</h3>
+                   <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Adjust filters or check back later</p>
                 </div>
               )}
             </div>
@@ -201,11 +225,14 @@ export default function Home() {
 }
 
 const AuthRequiredState = ({ title, desc, onAuth }: { title: string, desc: string, onAuth: () => void }) => (
-  <div className="p-8 text-center bg-white rounded-xl border border-slate-100 shadow-sm max-w-sm mx-auto my-12">
-    <h3 className="text-lg font-black text-slate-900 tracking-tight mb-2 uppercase">{title}</h3>
-    <p className="text-slate-500 text-[10px] font-medium leading-relaxed mb-6">{desc}</p>
-    <button onClick={onAuth} className="w-full py-3 bg-slate-900 text-white rounded-lg font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">
-      Sign In
+  <div className="p-10 text-center bg-white rounded-[2.5rem] border border-slate-100 shadow-sm max-w-sm mx-auto my-16">
+    <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+    </div>
+    <h3 className="text-xl font-black text-slate-900 tracking-tight mb-3 uppercase">{title}</h3>
+    <p className="text-slate-500 text-xs font-medium leading-relaxed mb-8">{desc}</p>
+    <button onClick={onAuth} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl shadow-slate-900/10">
+      Access Secure Portal
     </button>
   </div>
 );

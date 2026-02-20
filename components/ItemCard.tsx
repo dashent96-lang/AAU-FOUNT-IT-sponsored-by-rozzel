@@ -44,14 +44,20 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, onMessage, onViewDetails, cur
           loading="lazy"
         />
         
-        {/* Compact Status Overlay */}
-        <div className="absolute top-1.5 left-1.5 z-10">
+        {/* Status Overlays */}
+        <div className="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1">
           <div className={`px-2 py-0.5 rounded-md text-[6px] sm:text-[7px] font-black uppercase tracking-widest shadow-sm flex items-center space-x-1 ${
             isResolved ? 'bg-slate-700 text-white' : isLost ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'
           }`}>
             {!isResolved && <span className={`w-0.5 h-0.5 rounded-full ${isLost ? 'bg-red-200' : 'bg-emerald-200'} animate-pulse`}></span>}
             <span>{item.status}</span>
           </div>
+
+          {!item.isVerified && (
+            <div className="px-2 py-0.5 rounded-md text-[6px] sm:text-[7px] font-black uppercase tracking-widest shadow-sm bg-amber-500 text-white">
+              Pending Verification
+            </div>
+          )}
         </div>
 
         {isResolved && (
@@ -88,7 +94,7 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, onMessage, onViewDetails, cur
           </div>
           
           <div className="flex space-x-1">
-            {isOwner && !isResolved && (
+            {isOwner && !isResolved && item.isVerified && (
               <button 
                 onClick={handleResolve}
                 className="px-2 py-1 rounded-md text-[7px] font-black transition-all uppercase tracking-widest bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white"
@@ -97,7 +103,7 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, onMessage, onViewDetails, cur
               </button>
             )}
             
-            {!isResolved && (
+            {item.isVerified && !isResolved && (
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
@@ -107,6 +113,12 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, onMessage, onViewDetails, cur
               >
                 Admin Support
               </button>
+            )}
+
+            {!item.isVerified && (
+              <div className="px-2 py-1 rounded-md text-[7px] font-black uppercase tracking-widest bg-slate-100 text-slate-400">
+                Awaiting Audit
+              </div>
             )}
           </div>
         </div>

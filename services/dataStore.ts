@@ -15,6 +15,7 @@ const KEYS = {
   ITEMS: 'aau_items_local',
   MESSAGES: 'aau_messages_local',
   USER: 'aau_current_user',
+  USERS_LIST: 'aau_all_users_local',
   INITIALIZED: 'aau_db_init'
 };
 
@@ -51,7 +52,6 @@ const SEED_ITEMS: Item[] = [
 ];
 
 export const dataStore = {
-  // Enhanced resilience fetching from API with local fallback support
   async safeFetch(url: string, options: RequestInit) {
     if (IS_SERVER) return null;
     try {
@@ -71,7 +71,6 @@ export const dataStore = {
     }
   },
 
-  // Helper for safe local storage retrieval
   _getLocal<T>(key: string, def: T): T {
     if (IS_SERVER) return def;
     try {
@@ -87,7 +86,6 @@ export const dataStore = {
     }
   },
 
-  // Helper for safe local storage persistence
   _setLocal(key: string, data: any) {
     if (IS_SERVER) return;
     try {
@@ -97,7 +95,6 @@ export const dataStore = {
     }
   },
 
-  // Session management methods
   setCurrentUser: (user: User | null) => {
     dataStore._setLocal(KEYS.USER, user);
   },
@@ -110,7 +107,6 @@ export const dataStore = {
     dataStore.setCurrentUser(null);
   },
 
-  // Account creation and sign-in logic
   signup: async (userData: Omit<User, 'id'>): Promise<User> => {
     const apiUser = await dataStore.safeFetch('/api/auth', {
       method: 'POST',
@@ -118,6 +114,12 @@ export const dataStore = {
     });
     const user = apiUser || { ...userData, id: 'user-' + Math.random().toString(36).substr(2, 9) };
     dataStore.setCurrentUser(user);
+    
+    // If local mode, track users for admin
+    if (!apiUser) {
+      const allUsers = dataStore._getLocal<User[]>(KEYS.USERS_LIST, []);
+      dataStore._setLocal(KEYS.USERS_LIST, [...allUsers, user]);
+    }
     return user;
   },
 
@@ -135,11 +137,19 @@ export const dataStore = {
       dataStore.setCurrentUser(admin);
       return admin;
     }
-    // Fallback: Check local users if API is down
-    return null;
+    // Search local users
+    const localUsers = dataStore._getLocal<User[]>(KEYS.USERS_LIST, []);
+    const user = localUsers.find(u => u.email === email.toLowerCase());
+    if (user) dataStore.setCurrentUser(user);
+    return user || null;
   },
 
-  // Retrieval and filtering of items
+  getAllUsers: async (): Promise<User[]> => {
+    const apiUsers = await dataStore.safeFetch('/api/auth/users', { method: 'GET' });
+    if (apiUsers) return apiUsers;
+    return dataStore._getLocal<User[]>(KEYS.USERS_LIST, []);
+  },
+
   getItems: async (all = false): Promise<Item[]> => {
     const apiItems = await dataStore.safeFetch(`/api/items?all=${all}`, { method: 'GET' });
     if (apiItems && Array.isArray(apiItems)) {
@@ -150,7 +160,6 @@ export const dataStore = {
     return all ? localItems : localItems.filter(i => i && i.isVerified);
   },
 
-  // Creation of new lost/found reports
   saveItem: async (itemData: Partial<Item>): Promise<Item> => {
     const apiItem = await dataStore.safeFetch('/api/items', {
       method: 'POST',
@@ -171,7 +180,6 @@ export const dataStore = {
     return newItem;
   },
 
-  // Generic item update logic for admin editing
   updateItem: async (itemId: string, updates: Partial<Item>): Promise<Item> => {
     const apiItem = await dataStore.safeFetch('/api/items', {
       method: 'PUT',
@@ -187,17 +195,14 @@ export const dataStore = {
     return apiItem;
   },
 
-  // Specific status update for resolution workflow
   updateItemStatus: async (itemId: string, status: ItemStatus): Promise<Item> => {
     return dataStore.updateItem(itemId, { status });
   },
 
-  // Admin-only verification toggle
   verifyItem: async (itemId: string): Promise<Item> => {
     return dataStore.updateItem(itemId, { isVerified: true });
   },
 
-  // Permanent removal of reports
   deleteItem: async (itemId: string): Promise<boolean> => {
     const result = await dataStore.safeFetch(`/api/items?itemId=${itemId}`, { method: 'DELETE' });
     
@@ -206,7 +211,6 @@ export const dataStore = {
     return result ? result.success : true;
   },
 
-  // Communication retrieval
   getMessages: async (userId: string): Promise<Message[]> => {
     const apiMsgs = await dataStore.safeFetch(`/api/messages?userId=${userId}`, { method: 'GET' });
     if (apiMsgs && Array.isArray(apiMsgs)) {
@@ -216,13 +220,11 @@ export const dataStore = {
     return dataStore._getLocal<Message[]>(KEYS.MESSAGES, []);
   },
 
-  // Targeted message filtering for item context
   getMessagesForItem: async (userId: string, itemId: string): Promise<Message[]> => {
     const all = await dataStore.getMessages(userId);
     return (all || []).filter(m => m && m.itemId === itemId);
   },
 
-  // Dispatching new support inquiries or messages
   sendMessage: async (msgData: Partial<Message>): Promise<Message> => {
     const apiMsg = await dataStore.safeFetch('/api/messages', {
       method: 'POST',
@@ -242,7 +244,6 @@ export const dataStore = {
     return newMsg;
   },
 
-  // Profile management and server synchronization
   updateUser: async (userId: string, updates: Partial<User>): Promise<User> => {
     const apiUser = await dataStore.safeFetch('/api/auth', {
       method: 'POST',

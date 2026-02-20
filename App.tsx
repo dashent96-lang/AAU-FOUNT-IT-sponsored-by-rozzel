@@ -40,7 +40,9 @@ const App: React.FC = () => {
 
   const refreshData = useCallback(async () => {
     try {
-      const fetchedItems = await dataStore.getItems();
+      // We fetch ALL items so the current user can see their own pending ones,
+      // but we will filter them in the view logic for the home feed.
+      const fetchedItems = await dataStore.getItems(true);
       setItems(Array.isArray(fetchedItems) ? fetchedItems : []);
     } catch (error) {
       console.error("Data refresh error:", error);
@@ -99,6 +101,10 @@ const App: React.FC = () => {
     
     return safeItems.filter(item => {
       if (!item) return false;
+      
+      // Home feed logic: Only show verified items to the public
+      if (activeTab === 'home' && !item.isVerified) return false;
+
       const title = (item.title || '').toLowerCase();
       const desc = (item.description || '').toLowerCase();
       
@@ -108,7 +114,7 @@ const App: React.FC = () => {
       
       return matchesSearch && matchesStatus && matchesLocation;
     });
-  }, [items, searchTerm, statusFilter, locationFilter]);
+  }, [items, searchTerm, statusFilter, locationFilter, activeTab]);
 
   const handleLogout = () => {
     dataStore.logout();
@@ -148,6 +154,7 @@ const App: React.FC = () => {
             <ProfileView 
               currentUser={currentUser} 
               onUpdate={setCurrentUser} 
+              // Profile view shows ALL of the user's items, including unverified ones
               myItems={items.filter(i => i && i.posterId === currentUser.id)}
               onMessage={setSelectedMessageItem}
               onViewDetails={setSelectedDetailItem}
@@ -228,6 +235,7 @@ const App: React.FC = () => {
               ) : (
                 <div className="col-span-full py-20 text-center">
                   <h3 className="text-xl font-black text-slate-300 uppercase tracking-tight">No Reports Found</h3>
+                  <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-2">Adjust filters or check back later</p>
                 </div>
               )}
             </div>

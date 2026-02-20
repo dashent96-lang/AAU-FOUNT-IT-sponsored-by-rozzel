@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server';
 import clientPromise from '../../../lib/mongodb';
 import { ObjectId } from 'mongodb';
@@ -15,7 +14,6 @@ export async function GET(request: Request) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     
-    // Only return verified items to normal users
     const query = showAll ? {} : { isVerified: true };
     
     const items = await db.collection('items')
@@ -31,7 +29,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json(formattedItems);
   } catch (e: any) {
-    return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+    console.error("Fetch Items Error:", e);
+    return NextResponse.json({ error: 'Database synchronization failed.' }, { status: 503 });
   }
 }
 
@@ -43,18 +42,17 @@ export async function POST(request: Request) {
     
     const newItem = {
       ...body,
-      isVerified: false, // Force moderation
+      isVerified: false, 
       createdAt: Date.now(),
     };
 
     const result = await db.collection('items').insertOne(newItem);
     return NextResponse.json({ ...newItem, id: result.insertedId.toString() });
   } catch (e: any) {
-    return NextResponse.json({ error: 'Failed to create item' }, { status: 500 });
+    return NextResponse.json({ error: 'Submission failed.' }, { status: 500 });
   }
 }
 
-// Fixed: Allow generic field updates instead of being restricted to status only
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
@@ -62,7 +60,6 @@ export async function PUT(request: Request) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     
-    // Clean updates object to prevent identifier mutations
     delete (updates as any).id;
     delete (updates as any)._id;
     delete (updates as any).createdAt;
@@ -73,29 +70,10 @@ export async function PUT(request: Request) {
       { returnDocument: 'after' }
     );
     
-    if (!result) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    if (!result) return NextResponse.json({ error: 'Report not found.' }, { status: 404 });
     return NextResponse.json({ ...result, id: result._id.toString(), _id: undefined });
   } catch (e: any) {
-    return NextResponse.json({ error: 'Failed to update item' }, { status: 500 });
-  }
-}
-
-export async function PATCH(request: Request) {
-  try {
-    const { itemId, isVerified } = await request.json();
-    const client = await clientPromise;
-    const db = client.db(DB_NAME);
-    
-    const result = await db.collection('items').findOneAndUpdate(
-      { _id: new ObjectId(itemId) },
-      { $set: { isVerified } },
-      { returnDocument: 'after' }
-    );
-    
-    if (!result) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
-    return NextResponse.json({ ...result, id: result._id.toString(), _id: undefined });
-  } catch (e: any) {
-    return NextResponse.json({ error: 'Failed to verify item' }, { status: 500 });
+    return NextResponse.json({ error: 'Update failed.' }, { status: 500 });
   }
 }
 
@@ -103,7 +81,7 @@ export async function DELETE(request: Request) {
   const { searchParams } = new URL(request.url);
   const itemId = searchParams.get('itemId');
 
-  if (!itemId) return NextResponse.json({ error: 'Item ID required' }, { status: 400 });
+  if (!itemId) return NextResponse.json({ error: 'ID required.' }, { status: 400 });
 
   try {
     const client = await clientPromise;
@@ -111,6 +89,6 @@ export async function DELETE(request: Request) {
     await db.collection('items').deleteOne({ _id: new ObjectId(itemId) });
     return NextResponse.json({ success: true });
   } catch (e: any) {
-    return NextResponse.json({ error: 'Failed to delete item' }, { status: 500 });
+    return NextResponse.json({ error: 'Deletion failed.' }, { status: 500 });
   }
 }
